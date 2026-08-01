@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #09090b;
+    color: #f4f4f5;
+  }
+}
+
+/* Custom retro styling helpers */
+.font-pixel {
+  font-family: var(--font-pixel), monospace;
+}
+
+.font-vt323 {
+  font-family: var(--font-vt323), monospace;
+}
+
+/* Canvas crisp rendering */
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
