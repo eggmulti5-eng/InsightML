@@ -6,6 +6,9 @@ import { PerceptronCanvas } from "@/components/canvas/PerceptronCanvas";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
+import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
+import { useStoryMode } from "@/lib/story/useStoryMode";
+import { perceptronWalkthrough } from "@/lib/story/walkthroughs/perceptron";
 import {
   DataPoint,
   PerceptronWeights,
@@ -14,7 +17,11 @@ import {
   calculateAccuracy,
 } from "@/lib/ml/perceptron";
 
+type AppMode = "select" | "story" | "sandbox";
+
 export default function PerceptronPlayground() {
+  const [appMode, setAppMode] = useState<AppMode>("select");
+
   const [points, setPoints] = useState<DataPoint[]>([]);
   const [weights, setWeights] = useState<PerceptronWeights>(initRandomWeights());
   const [learningRate, setLearningRate] = useState<number>(0.1);
@@ -23,19 +30,23 @@ export default function PerceptronPlayground() {
 
   const trainingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Add Point
+  // Story mode controller
+  const story = useStoryMode();
+
+  // ── Point handling ───────────────────────────────────────────────────────
   const handleAddPoint = (newPoint: DataPoint) => {
     setPoints((prev) => [...prev, newPoint]);
+    story.registerAction("add-point");
   };
 
-  // Run a single training epoch across all current points
+  // ── Training ─────────────────────────────────────────────────────────────
   const handleTrainStep = useCallback(() => {
     if (points.length === 0) return;
     setWeights((prevWeights) => trainEpoch(points, prevWeights, learningRate));
     setStepCount((prev) => prev + 1);
-  }, [points, learningRate]);
+    story.registerAction("train-step");
+  }, [points, learningRate, story]);
 
-  // Handle continuous training toggle (runs every 300ms)
   useEffect(() => {
     if (isTraining) {
       trainingIntervalRef.current = setInterval(() => {
@@ -45,45 +56,131 @@ export default function PerceptronPlayground() {
       clearInterval(trainingIntervalRef.current);
       trainingIntervalRef.current = null;
     }
-
     return () => {
-      if (trainingIntervalRef.current) {
-        clearInterval(trainingIntervalRef.current);
-      }
+      if (trainingIntervalRef.current) clearInterval(trainingIntervalRef.current);
     };
   }, [isTraining, handleTrainStep]);
 
-  // Reset Weights
   const handleResetWeights = () => {
     setWeights(initRandomWeights());
     setStepCount(0);
   };
 
-  // Clear All Points
   const handleClearPoints = () => {
     setPoints([]);
     setStepCount(0);
     setIsTraining(false);
   };
 
-  // Preset Dataset: Linearly Separable
   const loadPresetSeparable = () => {
     setIsTraining(false);
     setStepCount(0);
     setPoints([
-      { id: "1", x: -0.6, y: 0.6, label: 1 },
-      { id: "2", x: -0.4, y: 0.8, label: 1 },
-      { id: "3", x: -0.7, y: 0.3, label: 1 },
-      { id: "4", x: -0.2, y: 0.5, label: 1 },
-      { id: "5", x: 0.5, y: -0.6, label: -1 },
-      { id: "6", x: 0.7, y: -0.4, label: -1 },
-      { id: "7", x: 0.3, y: -0.7, label: -1 },
-      { id: "8", x: 0.6, y: -0.2, label: -1 },
+      { id: "1", x: -0.6, y: 0.6,  label:  1 },
+      { id: "2", x: -0.4, y: 0.8,  label:  1 },
+      { id: "3", x: -0.7, y: 0.3,  label:  1 },
+      { id: "4", x: -0.2, y: 0.5,  label:  1 },
+      { id: "5", x:  0.5, y: -0.6, label: -1 },
+      { id: "6", x:  0.7, y: -0.4, label: -1 },
+      { id: "7", x:  0.3, y: -0.7, label: -1 },
+      { id: "8", x:  0.6, y: -0.2, label: -1 },
     ]);
   };
 
   const currentAccuracy = calculateAccuracy(points, weights);
 
+  // ── Mode selection handlers ───────────────────────────────────────────────
+  const enterStoryMode = () => {
+    setAppMode("story");
+    story.start(perceptronWalkthrough);
+  };
+
+  const enterSandboxMode = () => {
+    setAppMode("sandbox");
+    story.skip();
+  };
+
+  // When story finishes (isActive becomes false after last step) go to sandbox
+  useEffect(() => {
+    if (appMode === "story" && !story.state.isActive) {
+      setAppMode("sandbox");
+    }
+  }, [appMode, story.state.isActive]);
+
+  // ── Mode Selection Screen ─────────────────────────────────────────────────
+  if (appMode === "select") {
+    return (
+      <main className="min-h-screen bg-[#1e140e] text-[#fefae0] flex flex-col items-center justify-center p-8 font-vt323">
+        {/* Module nav still accessible */}
+        <nav className="fixed top-4 right-4 flex items-center gap-2 z-10">
+          <Link href="/playground/perceptron"
+            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
+            01. Perceptron
+          </Link>
+          <Link href="/playground/gradient-descent"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
+            02. Gradient Descent
+          </Link>
+          <Link href="/playground/neural-net"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
+            03. Neural Net
+          </Link>
+        </nav>
+
+        <div className="max-w-lg w-full text-center flex flex-col items-center gap-8">
+          {/* Title */}
+          <div>
+            <span className="bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#1b3521] inline-block mb-4">
+              Module 01
+            </span>
+            <h1 className="text-3xl font-pixel text-[#dda15e] uppercase tracking-wider mb-2">
+              Perceptron Visualizer
+            </h1>
+            <p className="text-[#a3b18a] text-xl">Choose your experience:</p>
+          </div>
+
+          {/* Mode cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+            {/* Story Mode card */}
+            <button
+              onClick={enterStoryMode}
+              className="group bg-[#281b12] border-4 border-[#386641] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">📖</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Story Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  Guided walkthrough with BYTE the robot professor. Step-by-step explanations, prompts, and concept notes.
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#386641] border border-[#386641] px-2 py-1 self-start">
+                ▶ START TUTORIAL
+              </span>
+            </button>
+
+            {/* Sandbox Mode card */}
+            <button
+              onClick={enterSandboxMode}
+              className="group bg-[#281b12] border-4 border-[#382219] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">🔬</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Sandbox Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  Jump straight in and experiment. Full access to all controls, no guided steps.
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#a3b18a] border border-[#382219] px-2 py-1 self-start">
+                ▶ FREE EXPLORE
+              </span>
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Shared Playground UI (Story + Sandbox both render this) ───────────────
   return (
     <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
       {/* Top Header Bar */}
@@ -96,30 +193,36 @@ export default function PerceptronPlayground() {
             <h1 className="text-2xl md:text-3xl font-pixel text-[#dda15e] tracking-wider uppercase">
               Perceptron Visualizer
             </h1>
+            {/* Mode badge */}
+            {appMode === "story" ? (
+              <span className="bg-[#dda15e] text-[#1e140e] font-pixel text-[10px] px-2 py-1 border border-[#7a5225]">
+                STORY MODE
+              </span>
+            ) : (
+              <button
+                onClick={() => setAppMode("select")}
+                className="text-[#a3b18a] hover:text-[#dda15e] font-pixel text-[10px] border border-[#382219] px-2 py-1 transition-colors"
+              >
+                SANDBOX ↺
+              </button>
+            )}
           </div>
           <p className="text-[#a3b18a] text-lg mt-1 font-vt323">
             Single-Layer Neural Unit • Linear Binary Classifier • Pure TS Engine
           </p>
         </div>
 
-        {/* Module Navigation */}
         <nav className="flex items-center gap-2">
-          <Link
-            href="/playground/perceptron"
-            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]"
-          >
+          <Link href="/playground/perceptron"
+            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
             01. Perceptron
           </Link>
-          <Link
-            href="/playground/gradient-descent"
-            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors"
-          >
+          <Link href="/playground/gradient-descent"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
             02. Gradient Descent
           </Link>
-          <Link
-            href="/playground/neural-net"
-            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors"
-          >
+          <Link href="/playground/neural-net"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
             03. Neural Net
           </Link>
         </nav>
@@ -128,7 +231,7 @@ export default function PerceptronPlayground() {
       {/* Main Grid Layout */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Interactive Canvas */}
-        <div className="lg:col-span-7 flex flex-col items-center lg:items-start">
+        <div id="story-canvas-area" className="lg:col-span-7 flex flex-col items-center lg:items-start">
           <PerceptronCanvas
             points={points}
             weights={weights}
@@ -144,29 +247,37 @@ export default function PerceptronPlayground() {
           <RetroPanel title="Hyperparameters & Training" borderColor="border-[#382219]">
             <div className="flex flex-col gap-4">
               {/* Learning Rate Slider */}
-              <RetroSlider
-                label="Learning Rate (η)"
-                min={0.01}
-                max={1.0}
-                step={0.01}
-                value={learningRate}
-                onChange={setLearningRate}
-                displayValue={learningRate.toFixed(2)}
-              />
+              <div id="story-lr-slider">
+                <RetroSlider
+                  label="Learning Rate (η)"
+                  min={0.01}
+                  max={1.0}
+                  step={0.01}
+                  value={learningRate}
+                  onChange={setLearningRate}
+                  displayValue={learningRate.toFixed(2)}
+                />
+              </div>
 
               {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-3">
-                <RetroButton
-                  variant="primary"
-                  onClick={handleTrainStep}
-                  disabled={points.length === 0}
-                >
-                  Train Step
-                </RetroButton>
+                <div id="story-train-step-btn">
+                  <RetroButton
+                    variant="primary"
+                    onClick={handleTrainStep}
+                    disabled={points.length === 0}
+                    className="w-full"
+                  >
+                    Train Step
+                  </RetroButton>
+                </div>
 
                 <RetroButton
                   variant={isTraining ? "danger" : "accent"}
-                  onClick={() => setIsTraining((prev) => !prev)}
+                  onClick={() => {
+                    setIsTraining((prev) => !prev);
+                    story.registerAction("train-auto");
+                  }}
                   disabled={points.length === 0}
                 >
                   {isTraining ? "Stop Auto" : "Train Auto"}
@@ -199,8 +310,11 @@ export default function PerceptronPlayground() {
           </RetroPanel>
 
           {/* Model Weights & Metrics Readout */}
-          <RetroPanel title="Live Weight & Bias Readout" borderColor="border-[#b37d36]">
-            <div className="space-y-3">
+          <RetroPanel
+            title="Live Weight & Bias Readout"
+            borderColor="border-[#b37d36]"
+          >
+            <div id="story-weights-panel" className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="bg-[#1e140e] p-2 border-2 border-[#382219]">
                   <span className="text-[#a3b18a] block text-sm font-pixel text-[9px]">W1 (X1)</span>
@@ -234,15 +348,11 @@ export default function PerceptronPlayground() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[#a3b18a]">Accuracy:</span>
-                  <span
-                    className={`font-bold ${
-                      currentAccuracy === 100
-                        ? "text-[#a3b18a]"
-                        : currentAccuracy >= 75
-                        ? "text-[#dda15e]"
-                        : "text-[#bc4749]"
-                    }`}
-                  >
+                  <span className={`font-bold ${
+                    currentAccuracy === 100 ? "text-[#a3b18a]"
+                    : currentAccuracy >= 75 ? "text-[#dda15e]"
+                    : "text-[#bc4749]"
+                  }`}>
                     {currentAccuracy}%
                   </span>
                 </div>
@@ -261,6 +371,22 @@ export default function PerceptronPlayground() {
           </RetroPanel>
         </div>
       </div>
+
+      {/* ── Story Mode Dialogue Overlay ───────────────────────────────────── */}
+      {appMode === "story" && story.currentStep && (
+        <NPCDialogueBox
+          step={story.currentStep}
+          script={perceptronWalkthrough}
+          stepIndex={story.state.currentStepIndex}
+          totalSteps={perceptronWalkthrough.steps.length}
+          actionCount={story.state.actionCount}
+          onNext={story.advance}
+          onSkip={() => {
+            story.skip();
+            setAppMode("sandbox");
+          }}
+        />
+      )}
     </main>
   );
 }

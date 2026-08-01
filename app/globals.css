@@ -23,6 +23,13 @@ canvas {
   image-rendering: crisp-edges;
 }
 
+/* Story Mode: animated ring around highlighted elements */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 2px #1e140e, 0 0 10px 2px rgba(221,161,94,0.4); }
+  50%  { box-shadow: 0 0 0 2px #1e140e, 0 0 22px 6px rgba(221,161,94,0.7); }
+  100% { box-shadow: 0 0 0 2px #1e140e, 0 0 10px 2px rgba(221,161,94,0.4); }
+}
+
 /* Pixel Art UI Shadow Utility */
 .pixel-shadow {
   box-shadow: 4px 4px 0px 0px #0f0a07;
