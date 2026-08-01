@@ -85,40 +85,40 @@ export default function PerceptronPlayground() {
   const currentAccuracy = calculateAccuracy(points, weights);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-4 md:p-8 font-mono selection:bg-emerald-500 selection:text-zinc-950">
+    <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
       {/* Top Header Bar */}
-      <header className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row md:items-center justify-between border-b-4 border-emerald-500 pb-4 gap-4">
+      <header className="max-w-7xl mx-auto mb-6 bg-[#281b12] border-4 border-[#382219] p-4 shadow-[6px_6px_0px_0px_#0f0a07] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="bg-emerald-500 text-zinc-950 font-bold px-2 py-0.5 text-xs uppercase">
+          <div className="flex items-center gap-3">
+            <span className="bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#1b3521]">
               Module 01
             </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-wider uppercase text-emerald-400">
-              Perceptron & Decision Boundary
+            <h1 className="text-2xl md:text-3xl font-pixel text-[#dda15e] tracking-wider uppercase">
+              Perceptron Visualizer
             </h1>
           </div>
-          <p className="text-zinc-400 text-xs mt-1">
-            Single-Layer Neural Unit • Linear Binary Classifier • Custom Pure TS Engine
+          <p className="text-[#a3b18a] text-lg mt-1 font-vt323">
+            Single-Layer Neural Unit • Linear Binary Classifier • Pure TS Engine
           </p>
         </div>
 
         {/* Module Navigation */}
-        <nav className="flex items-center gap-2 text-xs">
+        <nav className="flex items-center gap-2">
           <Link
             href="/playground/perceptron"
-            className="px-3 py-1.5 bg-emerald-500 text-zinc-950 font-bold border-2 border-zinc-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] uppercase"
+            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]"
           >
             01. Perceptron
           </Link>
           <Link
             href="/playground/gradient-descent"
-            className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-bold border-2 border-zinc-800 uppercase transition-colors"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors"
           >
             02. Gradient Descent
           </Link>
           <Link
             href="/playground/neural-net"
-            className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-bold border-2 border-zinc-800 uppercase transition-colors"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors"
           >
             03. Neural Net
           </Link>
@@ -141,7 +141,7 @@ export default function PerceptronPlayground() {
         {/* Right Column: Controls & Live Readout */}
         <div className="lg:col-span-5 flex flex-col gap-6 w-full">
           {/* Controls Panel */}
-          <RetroPanel title="Hyperparameters & Training" borderColor="border-emerald-500">
+          <RetroPanel title="Hyperparameters & Training" borderColor="border-[#382219]">
             <div className="flex flex-col gap-4">
               {/* Learning Rate Slider */}
               <RetroSlider
@@ -169,7 +169,7 @@ export default function PerceptronPlayground() {
                   onClick={() => setIsTraining((prev) => !prev)}
                   disabled={points.length === 0}
                 >
-                  {isTraining ? "Stop Auto" : "Train Continuously"}
+                  {isTraining ? "Stop Auto" : "Train Auto"}
                 </RetroButton>
               </div>
 
@@ -183,11 +183,13 @@ export default function PerceptronPlayground() {
               </div>
 
               {/* Preset Dataset */}
-              <div className="pt-2 border-t border-zinc-800">
-                <span className="text-xs text-zinc-400 block mb-2 uppercase font-bold">Presets</span>
+              <div className="pt-3 border-t-2 border-[#382219]">
+                <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">
+                  Presets
+                </span>
                 <RetroButton
                   variant="secondary"
-                  className="w-full text-xs"
+                  className="w-full text-[10px]"
                   onClick={loadPresetSeparable}
                 >
                   Load Linearly Separable Data
@@ -197,48 +199,48 @@ export default function PerceptronPlayground() {
           </RetroPanel>
 
           {/* Model Weights & Metrics Readout */}
-          <RetroPanel title="Live Weight & Bias Readout" borderColor="border-amber-500">
-            <div className="space-y-3 text-xs">
+          <RetroPanel title="Live Weight & Bias Readout" borderColor="border-[#b37d36]">
+            <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-zinc-950 p-2 border border-zinc-800">
-                  <span className="text-zinc-500 block">W1 (X1)</span>
-                  <span className="text-emerald-400 font-bold text-sm">
+                <div className="bg-[#1e140e] p-2 border-2 border-[#382219]">
+                  <span className="text-[#a3b18a] block text-sm font-pixel text-[9px]">W1 (X1)</span>
+                  <span className="text-[#dda15e] font-vt323 text-2xl font-bold">
                     {weights.w1 >= 0 ? `+${weights.w1.toFixed(4)}` : weights.w1.toFixed(4)}
                   </span>
                 </div>
-                <div className="bg-zinc-950 p-2 border border-zinc-800">
-                  <span className="text-zinc-500 block">W2 (X2)</span>
-                  <span className="text-emerald-400 font-bold text-sm">
+                <div className="bg-[#1e140e] p-2 border-2 border-[#382219]">
+                  <span className="text-[#a3b18a] block text-sm font-pixel text-[9px]">W2 (X2)</span>
+                  <span className="text-[#dda15e] font-vt323 text-2xl font-bold">
                     {weights.w2 >= 0 ? `+${weights.w2.toFixed(4)}` : weights.w2.toFixed(4)}
                   </span>
                 </div>
-                <div className="bg-zinc-950 p-2 border border-zinc-800">
-                  <span className="text-zinc-500 block">BIAS (b)</span>
-                  <span className="text-amber-400 font-bold text-sm">
+                <div className="bg-[#1e140e] p-2 border-2 border-[#382219]">
+                  <span className="text-[#a3b18a] block text-sm font-pixel text-[9px]">BIAS (b)</span>
+                  <span className="text-[#fefae0] font-vt323 text-2xl font-bold">
                     {weights.bias >= 0 ? `+${weights.bias.toFixed(4)}` : weights.bias.toFixed(4)}
                   </span>
                 </div>
               </div>
 
               {/* Stats Bar */}
-              <div className="bg-zinc-950 p-3 border border-zinc-800 space-y-2">
+              <div className="bg-[#1e140e] p-3 border-2 border-[#382219] space-y-2 text-xl">
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-400">Total Samples:</span>
-                  <span className="text-zinc-100 font-bold">{points.length} points</span>
+                  <span className="text-[#a3b18a]">Total Samples:</span>
+                  <span className="text-[#fefae0] font-bold">{points.length} points</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-400">Training Steps:</span>
-                  <span className="text-amber-400 font-bold">{stepCount}</span>
+                  <span className="text-[#a3b18a]">Training Steps:</span>
+                  <span className="text-[#dda15e] font-bold">{stepCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-zinc-400">Classification Accuracy:</span>
+                  <span className="text-[#a3b18a]">Accuracy:</span>
                   <span
                     className={`font-bold ${
                       currentAccuracy === 100
-                        ? "text-emerald-400"
+                        ? "text-[#a3b18a]"
                         : currentAccuracy >= 75
-                        ? "text-amber-400"
-                        : "text-red-400"
+                        ? "text-[#dda15e]"
+                        : "text-[#bc4749]"
                     }`}
                   >
                     {currentAccuracy}%
@@ -247,9 +249,11 @@ export default function PerceptronPlayground() {
               </div>
 
               {/* Formula display */}
-              <div className="bg-zinc-950/70 p-2 border border-zinc-900 text-[11px] text-zinc-500 leading-relaxed font-mono">
-                <p className="text-zinc-400 font-bold mb-0.5">Decision Equation:</p>
-                <code>
+              <div className="bg-[#1e140e] p-2.5 border-2 border-[#382219] text-lg text-[#a3b18a] leading-relaxed">
+                <p className="text-[#dda15e] font-pixel text-[9px] uppercase mb-1">
+                  Decision Equation:
+                </p>
+                <code className="font-vt323 text-xl text-[#fefae0]">
                   {weights.w1.toFixed(2)}·x₁ + {weights.w2.toFixed(2)}·x₂ + {weights.bias.toFixed(2)} = 0
                 </code>
               </div>

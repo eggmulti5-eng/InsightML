@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Press_Start_2P, VT323, Share_Tech_Mono } from "next/font/google";
+import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
 
 const pressStart = Press_Start_2P({
@@ -14,15 +14,9 @@ const vt323 = VT323({
   variable: "--font-vt323",
 });
 
-const shareTech = Share_Tech_Mono({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-tech",
-});
-
 export const metadata: Metadata = {
   title: "InsightML • Perceptron Decision Boundary Visualizer",
-  description: "Interactive Machine Learning Playground built with Next.js and TypeScript",
+  description: "Interactive Machine Learning Playground built with Next.js & Pixel Art UI",
 };
 
 export default function RootLayout({
@@ -33,9 +27,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${pressStart.variable} ${vt323.variable} ${shareTech.variable} h-full antialiased dark`}
+      className={`${pressStart.variable} ${vt323.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-zinc-950 text-zinc-100 font-mono flex flex-col">{children}</body>
+      <body className="min-h-full bg-[#1e140e] text-[#fefae0] font-vt323 text-xl flex flex-col selection:bg-[#dda15e] selection:text-[#1e140e]">
+        {children}
+      </body>
     </html>
   );
 }

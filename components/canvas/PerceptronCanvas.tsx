@@ -33,11 +33,11 @@ export const PerceptronCanvas: React.FC<PerceptronCanvasProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear background
-    ctx.fillStyle = "#09090b";
+    // Background: Warm dark timber canvas
+    ctx.fillStyle = "#18110b";
     ctx.fillRect(0, 0, width, height);
 
-    // Decision region background shading (retro pixel grid fill)
+    // Decision region background shading (warm pixel grid fill)
     const gridSize = 30;
     const cellW = width / gridSize;
     const cellH = height / gridSize;
@@ -49,13 +49,14 @@ export const PerceptronCanvas: React.FC<PerceptronCanvasProps> = ({
         const cartesian = canvasToCartesian(px, py, width, height);
         const pred = predictPoint(cartesian, weights);
 
-        ctx.fillStyle = pred === 1 ? "rgba(239, 68, 68, 0.08)" : "rgba(59, 130, 246, 0.08)";
+        // Class A (+1) = Terracotta tint, Class B (-1) = Warm Forest Green tint
+        ctx.fillStyle = pred === 1 ? "rgba(188, 71, 73, 0.16)" : "rgba(56, 102, 65, 0.16)";
         ctx.fillRect(i * cellW, j * cellH, cellW, cellH);
       }
     }
 
-    // Grid lines
-    ctx.strokeStyle = "#27272a";
+    // Grid lines (muted warm brown)
+    ctx.strokeStyle = "#2c1e15";
     ctx.lineWidth = 1;
     const gridStep = width / 10;
     for (let x = 0; x <= width; x += gridStep) {
@@ -72,8 +73,8 @@ export const PerceptronCanvas: React.FC<PerceptronCanvasProps> = ({
     }
 
     // Main Axes
-    ctx.strokeStyle = "#52525b";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#5c3d2e";
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(width / 2, 0);
     ctx.lineTo(width / 2, height);
@@ -82,48 +83,40 @@ export const PerceptronCanvas: React.FC<PerceptronCanvasProps> = ({
     ctx.stroke();
 
     // Axis Labels
-    ctx.fillStyle = "#a1a1aa";
-    ctx.font = "bold 12px monospace";
-    ctx.fillText("x1", width - 20, height / 2 - 8);
-    ctx.fillText("x2", width / 2 + 8, 18);
+    ctx.fillStyle = "#dda15e";
+    ctx.font = "bold 14px monospace";
+    ctx.fillText("x1", width - 24, height / 2 - 8);
+    ctx.fillText("x2", width / 2 + 10, 22);
 
-    // Decision Boundary Line
+    // Decision Boundary Line (Hard solid 4px line in warm golden ochre, no glow/shadow)
     const line = getDecisionBoundaryEndpoints(weights, width, height);
     if (line) {
-      ctx.save();
-      ctx.strokeStyle = "#10b981"; // Emerald green
+      ctx.strokeStyle = "#dda15e";
       ctx.lineWidth = 4;
-      ctx.shadowColor = "#10b981";
-      ctx.shadowBlur = 10;
-
       ctx.beginPath();
       ctx.moveTo(line.px1, line.py1);
       ctx.lineTo(line.px2, line.py2);
       ctx.stroke();
-      ctx.restore();
     }
 
-    // Data Points
+    // Data Points (Pixel art circles with solid outlines)
     points.forEach((p) => {
       const { px, py } = cartesianToCanvas(p.x, p.y, width, height);
       const isClassA = p.label === 1;
 
-      ctx.save();
-      ctx.shadowColor = isClassA ? "#ef4444" : "#3b82f6";
-      ctx.shadowBlur = 8;
-
-      ctx.fillStyle = isClassA ? "#ef4444" : "#3b82f6";
-      ctx.strokeStyle = "#ffffff";
+      // Outer solid 2px outline
+      ctx.fillStyle = isClassA ? "#bc4749" : "#386641";
+      ctx.strokeStyle = "#fefae0";
       ctx.lineWidth = 2;
 
       ctx.beginPath();
-      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      ctx.arc(px, py, 10, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.restore();
 
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 12px monospace";
+      // Label symbol inside dot (+ or −)
+      ctx.fillStyle = "#fefae0";
+      ctx.font = "bold 14px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(isClassA ? "+" : "−", px, py);
@@ -157,7 +150,7 @@ export const PerceptronCanvas: React.FC<PerceptronCanvasProps> = ({
   };
 
   return (
-    <div className="relative border-4 border-emerald-500 shadow-[8px_8px_0px_0px_rgba(16,185,129,0.3)] bg-zinc-950 p-2 inline-block">
+    <div className="relative border-4 border-[#382219] shadow-[8px_8px_0px_0px_#0f0a07] bg-[#18110b] p-2 inline-block rounded-none">
       <canvas
         ref={canvasRef}
         width={width}
@@ -166,14 +159,14 @@ export const PerceptronCanvas: React.FC<PerceptronCanvasProps> = ({
           if (e.button === 0) handleCanvasClick(e);
         }}
         onContextMenu={handleContextMenu}
-        className="cursor-crosshair block"
+        className="cursor-crosshair block rounded-none"
       />
-      <div className="flex justify-between items-center text-xs font-mono text-zinc-400 mt-2 px-1">
+      <div className="flex justify-between items-center text-sm font-vt323 text-[#fefae0] mt-2 px-1">
         <span>
-          LEFT CLICK = <strong className="text-red-400">Class A (+1)</strong>
+          LEFT CLICK = <strong className="text-[#bc4749] font-pixel text-xs">Class A (+1)</strong>
         </span>
         <span>
-          RIGHT CLICK = <strong className="text-blue-400">Class B (-1)</strong>
+          RIGHT CLICK = <strong className="text-[#386641] font-pixel text-xs">Class B (-1)</strong>
         </span>
       </div>
     </div>
