@@ -15,8 +15,9 @@ const vt323 = VT323({
 });
 
 export const metadata: Metadata = {
-  title: "InsightML • Perceptron Decision Boundary Visualizer",
-  description: "Interactive Machine Learning Playground built with Next.js & Pixel Art UI",
+  title: "InsightML • Interactive Machine Learning Playground",
+  description:
+    "Watch machine learning happen right in your browser. Explore Perceptron, Gradient Descent, and Neural Networks — no setup, no coding, free for everyone.",
 };
 
 export default function RootLayout({

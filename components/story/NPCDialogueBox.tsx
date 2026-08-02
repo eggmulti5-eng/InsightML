@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useTypewriter } from "@/lib/story/useTypewriter";
 import { StoryStep, WalkthroughScript } from "@/lib/story/types";
+import { ByteSprite } from "@/components/sprites/ByteSprite";
 
 interface NPCDialogueBoxProps {
   step: StoryStep;
@@ -107,8 +108,27 @@ export const NPCDialogueBox: React.FC<NPCDialogueBoxProps> = ({
           <div className="flex gap-0">
             {/* Portrait column */}
             <div className="flex-shrink-0 w-28 bg-[#18110b] border-r-4 border-[#382219] flex flex-col items-center justify-center py-4 px-3 gap-2">
-              <div className="w-20 h-20 border-4 border-[#5c3d2e] bg-[#1e140e] overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_0px_#0f0a07]">
-                {script.npcPortrait ? (
+              <div className="w-20 h-20 border-4 border-[#5c3d2e] bg-[#1e140e] overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_0px_#0f0a07] relative">
+                {/* Render ByteSprite for BYTE's portrait; Image for any other NPC; robot emoji as fallback */}
+                {script.npcPortrait?.includes("npc-portrait") ? (
+                  <>
+                    <Image
+                      src={script.npcPortrait}
+                      alt={script.npcName}
+                      width={80}
+                      height={80}
+                      className="object-cover"
+                      style={{ imageRendering: "pixelated" }}
+                    />
+                    {/* ByteSprite overlay badge in bottom-right corner */}
+                    <div
+                      className="absolute bottom-0 right-0 border-t border-l border-[#5c3d2e] bg-[#1e140e]"
+                      style={{ lineHeight: 0 }}
+                    >
+                      <ByteSprite scale={2} />
+                    </div>
+                  </>
+                ) : script.npcPortrait ? (
                   <Image
                     src={script.npcPortrait}
                     alt={script.npcName}
@@ -118,7 +138,8 @@ export const NPCDialogueBox: React.FC<NPCDialogueBoxProps> = ({
                     style={{ imageRendering: "pixelated" }}
                   />
                 ) : (
-                  <span className="text-[#dda15e] text-3xl">🤖</span>
+                  /* No portrait set — show ByteSprite as the main character icon */
+                  <ByteSprite scale={2} />
                 )}
               </div>
               <span
