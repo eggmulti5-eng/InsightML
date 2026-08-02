@@ -2,13 +2,18 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PerceptronCanvas } from "@/components/canvas/PerceptronCanvas";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
 import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
+import { ChallengeCard } from "@/components/challenge/ChallengeCard";
+import { ChallengeResultModal } from "@/components/challenge/ChallengeResultModal";
 import { useStoryMode } from "@/lib/story/useStoryMode";
+import { useChallengeMode } from "@/lib/challenge/useChallengeMode";
 import { perceptronWalkthrough } from "@/lib/story/walkthroughs/perceptron";
+import { perceptronChallenge } from "@/lib/challenge/challenges";
 import {
   DataPoint,
   PerceptronWeights,
@@ -17,9 +22,10 @@ import {
   calculateAccuracy,
 } from "@/lib/ml/perceptron";
 
-type AppMode = "select" | "story" | "sandbox";
+type AppMode = "select" | "story" | "sandbox" | "challenge";
 
 export default function PerceptronPlayground() {
+  const router = useRouter();
   const [appMode, setAppMode] = useState<AppMode>("select");
 
   const [points, setPoints] = useState<DataPoint[]>([]);
@@ -32,6 +38,9 @@ export default function PerceptronPlayground() {
 
   // Story mode controller
   const story = useStoryMode();
+
+  // Challenge mode controller
+  const challenge = useChallengeMode(perceptronChallenge);
 
   // ── Point handling ───────────────────────────────────────────────────────
   const handleAddPoint = (newPoint: DataPoint) => {
@@ -100,12 +109,41 @@ export default function PerceptronPlayground() {
     story.skip();
   };
 
+  const enterChallengeMode = () => {
+    setAppMode("challenge");
+    challenge.reset();
+    setPoints([]);
+    setWeights(initRandomWeights());
+    setStepCount(0);
+    setIsTraining(false);
+  };
+
   // When story finishes (isActive becomes false after last step) go to sandbox
   useEffect(() => {
     if (appMode === "story" && !story.state.isActive) {
       setAppMode("sandbox");
     }
   }, [appMode, story.state.isActive]);
+
+  // ── Challenge progress tracking ───────────────────────────────────────────
+  useEffect(() => {
+    if (appMode === "challenge") {
+      challenge.update({ stepCount, accuracy: currentAccuracy });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, stepCount, currentAccuracy]);
+
+  const handleChallengeRetry = () => {
+    challenge.reset();
+    setPoints([]);
+    setWeights(initRandomWeights());
+    setStepCount(0);
+    setIsTraining(false);
+  };
+
+  const handleNextChallenge = () => {
+    router.push(perceptronChallenge.nextChallengeUrl ?? "/playground/gradient-descent");
+  };
 
   // ── Mode Selection Screen ─────────────────────────────────────────────────
   if (appMode === "select") {
@@ -127,7 +165,7 @@ export default function PerceptronPlayground() {
           </Link>
         </nav>
 
-        <div className="max-w-lg w-full text-center flex flex-col items-center gap-8">
+        <div className="max-w-3xl w-full text-center flex flex-col items-center gap-8">
           {/* Title */}
           <div>
             <span className="bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#1b3521] inline-block mb-4">
@@ -140,7 +178,7 @@ export default function PerceptronPlayground() {
           </div>
 
           {/* Mode cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
             {/* Story Mode card */}
             <button
               onClick={enterStoryMode}
@@ -150,11 +188,28 @@ export default function PerceptronPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Story Mode</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Guided walkthrough with BYTE the robot professor. Step-by-step explanations, prompts, and concept notes.
+                  Guided walkthrough with BYTE the robot professor.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#386641] border border-[#386641] px-2 py-1 self-start">
                 ▶ START TUTORIAL
+              </span>
+            </button>
+
+            {/* Challenge Mode card */}
+            <button
+              onClick={enterChallengeMode}
+              className="group bg-[#281b12] border-4 border-[#dda15e] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">🏆</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Challenge Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  &quot;{perceptronChallenge.title}&quot; — {perceptronChallenge.goalSummary}
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#dda15e] border border-[#dda15e] px-2 py-1 self-start">
+                ▶ START CHALLENGE
               </span>
             </button>
 
@@ -167,7 +222,7 @@ export default function PerceptronPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Sandbox Mode</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Jump straight in and experiment. Full access to all controls, no guided steps.
+                  Jump straight in and experiment freely.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#a3b18a] border border-[#382219] px-2 py-1 self-start">
@@ -180,7 +235,7 @@ export default function PerceptronPlayground() {
     );
   }
 
-  // ── Shared Playground UI (Story + Sandbox both render this) ───────────────
+  // ── Shared Playground UI (Story + Sandbox + Challenge all render this) ────
   return (
     <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
       {/* Top Header Bar */}
@@ -198,6 +253,13 @@ export default function PerceptronPlayground() {
               <span className="bg-[#dda15e] text-[#1e140e] font-pixel text-[10px] px-2 py-1 border border-[#7a5225]">
                 STORY MODE
               </span>
+            ) : appMode === "challenge" ? (
+              <button
+                onClick={() => { challenge.reset(); setAppMode("select"); }}
+                className="text-[#bc4749] hover:text-[#dda15e] font-pixel text-[10px] border border-[#6b2123] px-2 py-1 transition-colors"
+              >
+                CHALLENGE ↺
+              </button>
             ) : (
               <button
                 onClick={() => setAppMode("select")}
@@ -243,6 +305,15 @@ export default function PerceptronPlayground() {
 
         {/* Right Column: Controls & Live Readout */}
         <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+          {/* Challenge Card (only in challenge mode) */}
+          {appMode === "challenge" && (
+            <ChallengeCard
+              challenge={perceptronChallenge}
+              metrics={{ stepCount, accuracy: currentAccuracy }}
+              isWon={challenge.isWon}
+            />
+          )}
+
           {/* Controls Panel */}
           <RetroPanel title="Hyperparameters & Training" borderColor="border-[#382219]">
             <div className="flex flex-col gap-4">
@@ -380,11 +451,30 @@ export default function PerceptronPlayground() {
           stepIndex={story.state.currentStepIndex}
           totalSteps={perceptronWalkthrough.steps.length}
           actionCount={story.state.actionCount}
-          onNext={story.advance}
+          onNext={() => {
+            if (story.state.currentStepIndex === perceptronWalkthrough.steps.length - 1) {
+              story.skip();
+              enterChallengeMode();
+            } else {
+              story.advance();
+            }
+          }}
           onSkip={() => {
             story.skip();
             setAppMode("sandbox");
           }}
+        />
+      )}
+
+      {/* ── Challenge Result Modal ────────────────────────────────────────── */}
+      {challenge.showModal && (
+        <ChallengeResultModal
+          challenge={perceptronChallenge}
+          stars={challenge.stars}
+          metrics={challenge.lastMetrics}
+          onRetry={handleChallengeRetry}
+          onNext={handleNextChallenge}
+          onDismiss={challenge.dismissModal}
         />
       )}
     </main>

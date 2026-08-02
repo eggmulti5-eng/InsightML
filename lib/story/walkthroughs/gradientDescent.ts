@@ -50,9 +50,9 @@ export const gradientDescentWalkthrough: WalkthroughScript = {
     {
       id: "finish",
       dialogue:
-        "Now you understand gradient descent — the engine inside every neural network!\n\nEvery time a network trains, it's doing exactly this: computing a gradient, taking a step, checking the loss, repeating.\n\nBring the learning rate back down to around 0.1, reset the path, and try the other surface presets (Banana, Saddle). Each one shows a different challenge gradient descent faces in the real world!\n\nYou're in Sandbox Mode now. Have fun exploring! ⭐",
+        "Now you understand gradient descent — the engine inside every neural network!\n\nEvery time a network trains, it's doing exactly this: computing a gradient, taking a step, checking the loss, repeating.\n\nReady to put your optimizer to the test? I've prepared a challenge where you must guide the ball to the bottom of the valley in as few steps as possible. Show me what you've learned! 🏆",
       requiredAction: "click-next",
-      nextButtonLabel: "Start Exploring! ★",
+      nextButtonLabel: "Try the Challenge! 🏆",
     },
   ],
 };

@@ -7,14 +7,19 @@ import React, {
   useCallback,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { NeuralNetCanvas } from "@/components/canvas/NeuralNetCanvas";
 import { LossChart } from "@/components/charts/LossChart";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
 import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
+import { ChallengeCard } from "@/components/challenge/ChallengeCard";
+import { ChallengeResultModal } from "@/components/challenge/ChallengeResultModal";
 import { useStoryMode } from "@/lib/story/useStoryMode";
+import { useChallengeMode } from "@/lib/challenge/useChallengeMode";
 import { neuralNetWalkthrough } from "@/lib/story/walkthroughs/neuralNet";
+import { neuralNetChallenge } from "@/lib/challenge/challenges";
 import { NNDataPoint, LayerWeightInfo, NetworkArchitecture } from "@/modules/neural-net/types";
 import type { TFType, TFModel } from "@/lib/ml/neural-net";
 
@@ -33,9 +38,34 @@ const PRESET_POINTS: NNDataPoint[] = [
   { id: "p8", x:  0.7, y: -0.5, label: 0 },
 ];
 
-type AppMode = "select" | "story" | "sandbox";
+/**
+ * Compute classification accuracy (0–100) by checking each data point
+ * against the nearest cell in the model's prediction grid.
+ * Grid covers [-1, 1] × [-1, 1] with `res × res` cells.
+ */
+function computeNNAccuracy(
+  pts: NNDataPoint[],
+  grid: Float32Array | null,
+  res: number,
+): number {
+  if (!grid || pts.length === 0) return 0;
+  let correct = 0;
+  for (const p of pts) {
+    const col = Math.min(res - 1, Math.max(0, Math.round((p.x + 1) / 2 * (res - 1))));
+    const row = Math.min(res - 1, Math.max(0, Math.round((1 - p.y) / 2 * (res - 1))));
+    const idx = row * res + col;
+    if (idx >= 0 && idx < grid.length) {
+      const predicted = grid[idx] >= 0.5 ? 1 : 0;
+      if (predicted === p.label) correct++;
+    }
+  }
+  return Math.round((correct / pts.length) * 100);
+}
+
+type AppMode = "select" | "story" | "sandbox" | "challenge";
 
 export default function NeuralNetPlayground() {
+  const router = useRouter();
   const [appMode, setAppMode] = useState<AppMode>("select");
 
   const [points, setPoints] = useState<NNDataPoint[]>([]);
@@ -57,6 +87,9 @@ export default function NeuralNetPlayground() {
 
   // Story mode controller
   const story = useStoryMode();
+
+  // Challenge mode controller
+  const challenge = useChallengeMode(neuralNetChallenge);
 
   // Keep isTrainingRef in sync
   useEffect(() => { isTrainingRef.current = isTraining; }, [isTraining]);
@@ -200,13 +233,6 @@ export default function NeuralNetPlayground() {
     };
   }, []);
 
-  // When story finishes (isActive becomes false after last step) go to sandbox
-  useEffect(() => {
-    if (appMode === "story" && !story.state.isActive) {
-      setAppMode("sandbox");
-    }
-  }, [appMode, story.state.isActive]);
-
   // ── Mode selection handlers ───────────────────────────────────────────────
   const enterStoryMode = () => {
     setAppMode("story");
@@ -218,13 +244,78 @@ export default function NeuralNetPlayground() {
     story.skip();
   };
 
+  const enterChallengeMode = () => {
+    setAppMode("challenge");
+    challenge.reset();
+    // Set architecture to 2 nodes / 1 layer for the challenge
+    setIsTraining(false);
+    setPoints(PRESET_POINTS);
+    setArchitecture({ hiddenSize: 2, numHiddenLayers: 1 });
+    setLossHistory([]);
+    setPredGrid(null);
+    setStepCount(0);
+    setStatusMsg("Challenge: Solve XOR with 2 nodes. Train away!");
+    // Rebuild model with the challenge architecture after state settles
+    setTimeout(() => {
+      if (!tfRef.current) return;
+      if (modelRef.current) modelRef.current.dispose();
+      const { buildModel } = require("@/lib/ml/neural-net");
+      modelRef.current = buildModel(tfRef.current, { hiddenSize: 2, numHiddenLayers: 1 }, 0.1);
+      setLayerWeights([]);
+    }, 0);
+  };
+
+  // When story finishes go to sandbox
+  useEffect(() => {
+    if (appMode === "story" && !story.state.isActive) {
+      setAppMode("sandbox");
+    }
+  }, [appMode, story.state.isActive]);
+
+  // ── Challenge progress tracking ───────────────────────────────────────────
+  const nnAccuracy = computeNNAccuracy(points, predGrid, GRID_RES);
+
+  useEffect(() => {
+    if (appMode === "challenge") {
+      challenge.update({
+        stepCount,
+        nnLoss: lossHistory.length > 0 ? lossHistory[lossHistory.length - 1] : null,
+        nnAccuracy,
+        hiddenSize: architecture.hiddenSize,
+        numHiddenLayers: architecture.numHiddenLayers,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, stepCount, nnAccuracy]);
+
+  const handleChallengeRetry = () => {
+    challenge.reset();
+    setIsTraining(false);
+    setPoints(PRESET_POINTS);
+    setArchitecture({ hiddenSize: 2, numHiddenLayers: 1 });
+    setLossHistory([]);
+    setPredGrid(null);
+    setStepCount(0);
+    setStatusMsg("Retrying! Train with 2 nodes.");
+    setTimeout(() => {
+      if (!tfRef.current) return;
+      if (modelRef.current) modelRef.current.dispose();
+      const { buildModel } = require("@/lib/ml/neural-net");
+      modelRef.current = buildModel(tfRef.current, { hiddenSize: 2, numHiddenLayers: 1 }, learningRate);
+      setLayerWeights([]);
+    }, 0);
+  };
+
+  const handleNextChallenge = () => {
+    router.push(neuralNetChallenge.nextChallengeUrl ?? "/playground/perceptron");
+  };
+
   const currentLoss = lossHistory.length > 0 ? lossHistory[lossHistory.length - 1] : null;
 
   // ── Mode Selection Screen ─────────────────────────────────────────────────
   if (appMode === "select") {
     return (
       <main className="min-h-screen bg-[#1e140e] text-[#fefae0] flex flex-col items-center justify-center p-8 font-vt323">
-        {/* Module nav still accessible */}
         <nav className="fixed top-4 right-4 flex items-center gap-2 z-10">
           <Link href="/playground/perceptron"
             className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
@@ -240,8 +331,7 @@ export default function NeuralNetPlayground() {
           </Link>
         </nav>
 
-        <div className="max-w-lg w-full text-center flex flex-col items-center gap-8">
-          {/* Title */}
+        <div className="max-w-3xl w-full text-center flex flex-col items-center gap-8">
           <div>
             <span className="bg-[#bc4749] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#6b2123] inline-block mb-4">
               Module 03
@@ -252,8 +342,7 @@ export default function NeuralNetPlayground() {
             <p className="text-[#a3b18a] text-xl">Choose your experience:</p>
           </div>
 
-          {/* Mode cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
             {/* Story Mode card */}
             <button
               onClick={enterStoryMode}
@@ -263,11 +352,28 @@ export default function NeuralNetPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Story Mode</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Guided walkthrough with BYTE. Discover why XOR needs hidden layers, and watch the network learn a curved boundary.
+                  Guided walkthrough with BYTE. Discover why XOR needs hidden layers.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#386641] border border-[#386641] px-2 py-1 self-start">
                 ▶ START TUTORIAL
+              </span>
+            </button>
+
+            {/* Challenge Mode card */}
+            <button
+              onClick={enterChallengeMode}
+              className="group bg-[#281b12] border-4 border-[#dda15e] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">🏆</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Challenge Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  &quot;{neuralNetChallenge.title}&quot; — {neuralNetChallenge.goalSummary}
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#dda15e] border border-[#dda15e] px-2 py-1 self-start">
+                ▶ START CHALLENGE
               </span>
             </button>
 
@@ -280,7 +386,7 @@ export default function NeuralNetPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Sandbox Mode</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Jump straight in. Adjust layers, nodes, and learning rate freely. Full control.
+                  Adjust layers, nodes, and learning rate freely. Full control.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#a3b18a] border border-[#382219] px-2 py-1 self-start">
@@ -293,7 +399,7 @@ export default function NeuralNetPlayground() {
     );
   }
 
-  // ── Shared Playground UI (Story + Sandbox both render this) ───────────────
+  // ── Shared Playground UI ──────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
       {/* ── Header & Module Tabs ─────────────────────────────────────── */}
@@ -311,6 +417,13 @@ export default function NeuralNetPlayground() {
               <span className="bg-[#dda15e] text-[#1e140e] font-pixel text-[10px] px-2 py-1 border border-[#7a5225]">
                 STORY MODE
               </span>
+            ) : appMode === "challenge" ? (
+              <button
+                onClick={() => { challenge.reset(); setAppMode("select"); }}
+                className="text-[#bc4749] hover:text-[#dda15e] font-pixel text-[10px] border border-[#6b2123] px-2 py-1 transition-colors"
+              >
+                CHALLENGE ↺
+              </button>
             ) : (
               <button
                 onClick={() => setAppMode("select")}
@@ -358,6 +471,21 @@ export default function NeuralNetPlayground() {
 
         {/* Right: Controls + Chart + Readout */}
         <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+
+          {/* Challenge Card (only in challenge mode) */}
+          {appMode === "challenge" && (
+            <ChallengeCard
+              challenge={neuralNetChallenge}
+              metrics={{
+                stepCount,
+                nnLoss: currentLoss,
+                nnAccuracy,
+                hiddenSize: architecture.hiddenSize,
+                numHiddenLayers: architecture.numHiddenLayers,
+              }}
+              isWon={challenge.isWon}
+            />
+          )}
 
           {/* Status bar */}
           <div className="bg-[#281b12] border-4 border-[#382219] px-4 py-2 shadow-[4px_4px_0px_0px_#0f0a07] text-[#a3b18a] text-lg font-vt323 flex items-center gap-2">
@@ -517,11 +645,30 @@ export default function NeuralNetPlayground() {
           stepIndex={story.state.currentStepIndex}
           totalSteps={neuralNetWalkthrough.steps.length}
           actionCount={story.state.actionCount}
-          onNext={story.advance}
+          onNext={() => {
+            if (story.state.currentStepIndex === neuralNetWalkthrough.steps.length - 1) {
+              story.skip();
+              enterChallengeMode();
+            } else {
+              story.advance();
+            }
+          }}
           onSkip={() => {
             story.skip();
             setAppMode("sandbox");
           }}
+        />
+      )}
+
+      {/* ── Challenge Result Modal ────────────────────────────────────────── */}
+      {challenge.showModal && (
+        <ChallengeResultModal
+          challenge={neuralNetChallenge}
+          stars={challenge.stars}
+          metrics={challenge.lastMetrics}
+          onRetry={handleChallengeRetry}
+          onNext={handleNextChallenge}
+          onDismiss={challenge.dismissModal}
         />
       )}
     </main>

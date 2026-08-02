@@ -51,9 +51,9 @@ export const perceptronWalkthrough: WalkthroughScript = {
     {
       id: "finish",
       dialogue:
-        "Excellent! You've just trained your first machine learning model!\n\nThe perceptron learned — purely from examples — to draw a line separating your red and blue points. No one told it where the line should be.\n\nYou're now in Sandbox Mode. Experiment freely: try overlapping points, change the learning rate, or load the preset data. Have fun! ⭐",
+        "Excellent! You've just trained your first machine learning model!\n\nThe perceptron learned — purely from examples — to draw a line separating your red and blue points. No one told it where the line should be.\n\nThink you've mastered it? I've set up a special Challenge Mode where you must train a perceptron under strict constraints. Are you ready to test your skills? Try the challenge! 🏆",
       requiredAction: "click-next",
-      nextButtonLabel: "Start Exploring! ★",
+      nextButtonLabel: "Try the Challenge! 🏆",
     },
   ],
 };

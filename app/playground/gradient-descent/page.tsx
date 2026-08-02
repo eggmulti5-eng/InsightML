@@ -2,14 +2,19 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GradientDescentCanvas } from "@/components/canvas/GradientDescentCanvas";
 import { LossChart } from "@/components/charts/LossChart";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
 import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
+import { ChallengeCard } from "@/components/challenge/ChallengeCard";
+import { ChallengeResultModal } from "@/components/challenge/ChallengeResultModal";
 import { useStoryMode } from "@/lib/story/useStoryMode";
+import { useChallengeMode } from "@/lib/challenge/useChallengeMode";
 import { gradientDescentWalkthrough } from "@/lib/story/walkthroughs/gradientDescent";
+import { gradientDescentChallenge } from "@/lib/challenge/challenges";
 import { LossPreset, Point2D } from "@/modules/gradient-descent/types";
 import {
   PRESETS,
@@ -20,9 +25,10 @@ import {
 
 const DEFAULT_START: Point2D = { x: -3.5, y: 3.5 };
 
-type AppMode = "select" | "story" | "sandbox";
+type AppMode = "select" | "story" | "sandbox" | "challenge";
 
 export default function GradientDescentPlayground() {
+  const router = useRouter();
   const [appMode, setAppMode] = useState<AppMode>("select");
 
   const [preset, setPreset] = useState<LossPreset>("bowl");
@@ -38,6 +44,9 @@ export default function GradientDescentPlayground() {
 
   // Story mode controller
   const story = useStoryMode();
+
+  // Challenge mode controller
+  const challenge = useChallengeMode(gradientDescentChallenge);
 
   // Execute ONE gradient descent step
   const handleStep = useCallback(() => {
@@ -130,12 +139,43 @@ export default function GradientDescentPlayground() {
     story.skip();
   };
 
+  const enterChallengeMode = () => {
+    setAppMode("challenge");
+    challenge.reset();
+    setIsAutoStepping(false);
+    setPreset("bowl");
+    setLearningRate(PRESETS["bowl"].defaultLr);
+    setPath([DEFAULT_START]);
+    setLossHistory([computeLoss(DEFAULT_START.x, DEFAULT_START.y, "bowl")]);
+  };
+
   // When story finishes (isActive becomes false after last step) go to sandbox
   useEffect(() => {
     if (appMode === "story" && !story.state.isActive) {
       setAppMode("sandbox");
     }
   }, [appMode, story.state.isActive]);
+
+  // ── Challenge progress tracking ───────────────────────────────────────────
+  useEffect(() => {
+    if (appMode === "challenge") {
+      challenge.update({ stepCount, currentLoss, lossHistory });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appMode, stepCount]);
+
+  const handleChallengeRetry = () => {
+    challenge.reset();
+    setIsAutoStepping(false);
+    setPreset("bowl");
+    setLearningRate(PRESETS["bowl"].defaultLr);
+    setPath([DEFAULT_START]);
+    setLossHistory([computeLoss(DEFAULT_START.x, DEFAULT_START.y, "bowl")]);
+  };
+
+  const handleNextChallenge = () => {
+    router.push(gradientDescentChallenge.nextChallengeUrl ?? "/playground/neural-net");
+  };
 
   // ── Mode Selection Screen ─────────────────────────────────────────────────
   if (appMode === "select") {
@@ -157,8 +197,7 @@ export default function GradientDescentPlayground() {
           </Link>
         </nav>
 
-        <div className="max-w-lg w-full text-center flex flex-col items-center gap-8">
-          {/* Title */}
+        <div className="max-w-3xl w-full text-center flex flex-col items-center gap-8">
           <div>
             <span className="bg-[#dda15e] text-[#1e140e] font-pixel text-[10px] uppercase px-2 py-1 border border-[#7a5225] inline-block mb-4">
               Module 02
@@ -169,8 +208,7 @@ export default function GradientDescentPlayground() {
             <p className="text-[#a3b18a] text-xl">Choose your experience:</p>
           </div>
 
-          {/* Mode cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
             {/* Story Mode card */}
             <button
               onClick={enterStoryMode}
@@ -180,11 +218,28 @@ export default function GradientDescentPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Story Mode</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Guided walkthrough with BYTE. Learn loss surfaces, gradient steps, and what happens when the learning rate is too high.
+                  Guided walkthrough with BYTE. Learn loss surfaces and learning rate dynamics.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#386641] border border-[#386641] px-2 py-1 self-start">
                 ▶ START TUTORIAL
+              </span>
+            </button>
+
+            {/* Challenge Mode card */}
+            <button
+              onClick={enterChallengeMode}
+              className="group bg-[#281b12] border-4 border-[#dda15e] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">🏆</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Challenge Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  &quot;{gradientDescentChallenge.title}&quot; — {gradientDescentChallenge.goalSummary}
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#dda15e] border border-[#dda15e] px-2 py-1 self-start">
+                ▶ START CHALLENGE
               </span>
             </button>
 
@@ -197,7 +252,7 @@ export default function GradientDescentPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Sandbox Mode</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Jump straight in. Experiment with learning rates, surfaces, and start points freely.
+                  Jump straight in. Experiment with surfaces, learning rates, and start points.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#a3b18a] border border-[#382219] px-2 py-1 self-start">
@@ -210,7 +265,7 @@ export default function GradientDescentPlayground() {
     );
   }
 
-  // ── Shared Playground UI (Story + Sandbox both render this) ───────────────
+  // ── Shared Playground UI ──────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
       {/* Top Navigation Bar */}
@@ -228,6 +283,13 @@ export default function GradientDescentPlayground() {
               <span className="bg-[#dda15e] text-[#1e140e] font-pixel text-[10px] px-2 py-1 border border-[#7a5225]">
                 STORY MODE
               </span>
+            ) : appMode === "challenge" ? (
+              <button
+                onClick={() => { challenge.reset(); setAppMode("select"); }}
+                className="text-[#bc4749] hover:text-[#dda15e] font-pixel text-[10px] border border-[#6b2123] px-2 py-1 transition-colors"
+              >
+                CHALLENGE ↺
+              </button>
             ) : (
               <button
                 onClick={() => setAppMode("select")}
@@ -242,24 +304,17 @@ export default function GradientDescentPlayground() {
           </p>
         </div>
 
-        {/* Module Navigation Tabs */}
         <nav className="flex items-center gap-2">
-          <Link
-            href="/playground/perceptron"
-            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors"
-          >
+          <Link href="/playground/perceptron"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
             01. Perceptron
           </Link>
-          <Link
-            href="/playground/gradient-descent"
-            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]"
-          >
+          <Link href="/playground/gradient-descent"
+            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
             02. Gradient Descent
           </Link>
-          <Link
-            href="/playground/neural-net"
-            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors"
-          >
+          <Link href="/playground/neural-net"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
             03. Neural Net
           </Link>
         </nav>
@@ -281,6 +336,15 @@ export default function GradientDescentPlayground() {
 
         {/* Right Column: Controls, Chart, & Readout */}
         <div className="lg:col-span-5 flex flex-col gap-6 w-full">
+          {/* Challenge Card (only in challenge mode) */}
+          {appMode === "challenge" && (
+            <ChallengeCard
+              challenge={gradientDescentChallenge}
+              metrics={{ stepCount, currentLoss, lossHistory }}
+              isWon={challenge.isWon}
+            />
+          )}
+
           {/* Controls Panel */}
           <div id="story-gd-controls">
             <RetroPanel title="Optimizer & Surface Setup" borderColor="border-[#382219]">
@@ -423,11 +487,30 @@ export default function GradientDescentPlayground() {
           stepIndex={story.state.currentStepIndex}
           totalSteps={gradientDescentWalkthrough.steps.length}
           actionCount={story.state.actionCount}
-          onNext={story.advance}
+          onNext={() => {
+            if (story.state.currentStepIndex === gradientDescentWalkthrough.steps.length - 1) {
+              story.skip();
+              enterChallengeMode();
+            } else {
+              story.advance();
+            }
+          }}
           onSkip={() => {
             story.skip();
             setAppMode("sandbox");
           }}
+        />
+      )}
+
+      {/* ── Challenge Result Modal ────────────────────────────────────────── */}
+      {challenge.showModal && (
+        <ChallengeResultModal
+          challenge={gradientDescentChallenge}
+          stars={challenge.stars}
+          metrics={challenge.lastMetrics}
+          onRetry={handleChallengeRetry}
+          onNext={handleNextChallenge}
+          onDismiss={challenge.dismissModal}
         />
       )}
     </main>

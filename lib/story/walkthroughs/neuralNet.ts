@@ -51,9 +51,9 @@ export const neuralNetWalkthrough: WalkthroughScript = {
     {
       id: "finish",
       dialogue:
-        "Incredible! You just trained a neural network to solve an \"impossible\" problem!\n\nHidden layers are what makes deep learning so powerful. Each layer learns to represent the data in a new way — edges, then shapes, then concepts — until the final layer can make accurate predictions.\n\nYou're in Sandbox Mode. Try adding your own points, changing the number of layers, or experimenting with the learning rate. The whole canvas is your playground now! ⭐",
+        "Incredible! You just trained a neural network to solve an \"impossible\" problem!\n\nHidden layers are what makes deep learning so powerful. Each layer learns to represent the data in a new way — edges, then shapes, then concepts — until the final layer can make accurate predictions.\n\nNow, here is the ultimate test: can you solve XOR with a network using only 2 hidden nodes? It's a real challenge of efficiency and hyperparameter tuning. Give it a shot! 🏆",
       requiredAction: "click-next",
-      nextButtonLabel: "Start Exploring! ★",
+      nextButtonLabel: "Try the Challenge! 🏆",
     },
   ],
 };
