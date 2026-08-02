@@ -25,6 +25,19 @@ interface UseTypewriterReturn {
 /**
  * Pure logic hook for a typewriter / character-by-character text reveal.
  * No DOM dependencies — just state and a timer.
+ *
+ * FIX (2026-08-02): The original implementation had a race condition where
+ * two separate useEffects both depended on [text]. When text changed:
+ *   1. Effect-A queued setCharIndex(0) but hadn't rendered yet.
+ *   2. Effect-B ran with the STALE charIndex from the previous step's
+ *      closure, so the "charIndex >= text.length" guard was evaluated
+ *      against the old (fully-typed) index — preventing the interval
+ *      from ever starting for the new step.
+ *
+ * Fix: Merge both effects into one. Use a ref (charIndexRef) as the
+ * authoritative index inside the interval callback so the closure never
+ * goes stale, and reset both the ref and the state atomically before
+ * scheduling the new interval.
  */
 export function useTypewriter({
   text,
@@ -33,39 +46,47 @@ export function useTypewriter({
 }: UseTypewriterOptions): UseTypewriterReturn {
   const [charIndex, setCharIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const textRef = useRef(text);
 
-  // Reset when text changes (new step)
+  // Ref keeps the interval callback's view of charIndex always current,
+  // avoiding stale closures without adding charIndex to the effect deps.
+  const charIndexRef = useRef(0);
+
+  // Single effect that atomically resets and restarts whenever text,
+  // speed, or paused changes. No stale-closure risk from charIndex.
   useEffect(() => {
-    textRef.current = text;
+    // Clear any running interval from the previous step/config.
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    // Reset to the beginning of the new text.
+    charIndexRef.current = 0;
     setCharIndex(0);
-  }, [text]);
 
-  useEffect(() => {
-    if (paused || charIndex >= text.length) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+    // Don't start if paused or the text is empty.
+    if (paused || text.length === 0) {
       return;
     }
 
     const msPerChar = 1000 / speed;
     intervalRef.current = setInterval(() => {
-      setCharIndex((prev) => {
-        if (prev >= textRef.current.length - 1) {
-          clearInterval(intervalRef.current!);
-          intervalRef.current = null;
-          return textRef.current.length;
-        }
-        return prev + 1;
-      });
+      const next = charIndexRef.current + 1;
+      charIndexRef.current = next;
+      setCharIndex(next);
+
+      if (next >= text.length) {
+        clearInterval(intervalRef.current!);
+        intervalRef.current = null;
+      }
     }, msPerChar);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, paused, speed]);
 
   const skipToEnd = () => {
@@ -73,6 +94,7 @@ export function useTypewriter({
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    charIndexRef.current = text.length;
     setCharIndex(text.length);
   };
 
@@ -81,6 +103,7 @@ export function useTypewriter({
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    charIndexRef.current = 0;
     setCharIndex(0);
   };
 
