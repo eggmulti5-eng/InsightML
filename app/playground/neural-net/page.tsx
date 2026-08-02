@@ -12,6 +12,9 @@ import { LossChart } from "@/components/charts/LossChart";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
+import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
+import { useStoryMode } from "@/lib/story/useStoryMode";
+import { neuralNetWalkthrough } from "@/lib/story/walkthroughs/neuralNet";
 import { NNDataPoint, LayerWeightInfo, NetworkArchitecture } from "@/modules/neural-net/types";
 import type { TFType, TFModel } from "@/lib/ml/neural-net";
 
@@ -30,7 +33,11 @@ const PRESET_POINTS: NNDataPoint[] = [
   { id: "p8", x:  0.7, y: -0.5, label: 0 },
 ];
 
+type AppMode = "select" | "story" | "sandbox";
+
 export default function NeuralNetPlayground() {
+  const [appMode, setAppMode] = useState<AppMode>("select");
+
   const [points, setPoints] = useState<NNDataPoint[]>([]);
   const [lossHistory, setLossHistory] = useState<number[]>([]);
   const [stepCount, setStepCount] = useState(0);
@@ -47,6 +54,9 @@ export default function NeuralNetPlayground() {
   const modelRef = useRef<TFModel | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isTrainingRef = useRef(false);
+
+  // Story mode controller
+  const story = useStoryMode();
 
   // Keep isTrainingRef in sync
   useEffect(() => { isTrainingRef.current = isTraining; }, [isTraining]);
@@ -111,7 +121,8 @@ export default function NeuralNetPlayground() {
     setLayerWeights(weights);
     setStepCount((s) => s + 1);
     setStatusMsg(`Step ${stepCount + 1} — Loss: ${loss.toFixed(4)}`);
-  }, [points, stepCount]);
+    story.registerAction("nn-train");
+  }, [points, stepCount, story]);
 
   // ── Continuous training interval ──────────────────────────────────────────
   useEffect(() => {
@@ -146,6 +157,7 @@ export default function NeuralNetPlayground() {
     setStepCount(0);
     setStatusMsg("XOR preset loaded. Click Train to start.");
     buildNewModel();
+    story.registerAction("nn-load-preset");
   };
 
   // ── Arch change — rebuild model ───────────────────────────────────────────
@@ -188,8 +200,100 @@ export default function NeuralNetPlayground() {
     };
   }, []);
 
+  // When story finishes (isActive becomes false after last step) go to sandbox
+  useEffect(() => {
+    if (appMode === "story" && !story.state.isActive) {
+      setAppMode("sandbox");
+    }
+  }, [appMode, story.state.isActive]);
+
+  // ── Mode selection handlers ───────────────────────────────────────────────
+  const enterStoryMode = () => {
+    setAppMode("story");
+    story.start(neuralNetWalkthrough);
+  };
+
+  const enterSandboxMode = () => {
+    setAppMode("sandbox");
+    story.skip();
+  };
+
   const currentLoss = lossHistory.length > 0 ? lossHistory[lossHistory.length - 1] : null;
 
+  // ── Mode Selection Screen ─────────────────────────────────────────────────
+  if (appMode === "select") {
+    return (
+      <main className="min-h-screen bg-[#1e140e] text-[#fefae0] flex flex-col items-center justify-center p-8 font-vt323">
+        {/* Module nav still accessible */}
+        <nav className="fixed top-4 right-4 flex items-center gap-2 z-10">
+          <Link href="/playground/perceptron"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
+            01. Perceptron
+          </Link>
+          <Link href="/playground/gradient-descent"
+            className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
+            02. Gradient Descent
+          </Link>
+          <Link href="/playground/neural-net"
+            className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
+            03. Neural Net
+          </Link>
+        </nav>
+
+        <div className="max-w-lg w-full text-center flex flex-col items-center gap-8">
+          {/* Title */}
+          <div>
+            <span className="bg-[#bc4749] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#6b2123] inline-block mb-4">
+              Module 03
+            </span>
+            <h1 className="text-3xl font-pixel text-[#dda15e] uppercase tracking-wider mb-2">
+              Neural Net Visualizer
+            </h1>
+            <p className="text-[#a3b18a] text-xl">Choose your experience:</p>
+          </div>
+
+          {/* Mode cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+            {/* Story Mode card */}
+            <button
+              onClick={enterStoryMode}
+              className="group bg-[#281b12] border-4 border-[#386641] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">📖</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Story Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  Guided walkthrough with BYTE. Discover why XOR needs hidden layers, and watch the network learn a curved boundary.
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#386641] border border-[#386641] px-2 py-1 self-start">
+                ▶ START TUTORIAL
+              </span>
+            </button>
+
+            {/* Sandbox Mode card */}
+            <button
+              onClick={enterSandboxMode}
+              className="group bg-[#281b12] border-4 border-[#382219] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#2e2214] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">🔬</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#dda15e] uppercase mb-2">Sandbox Mode</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  Jump straight in. Adjust layers, nodes, and learning rate freely. Full control.
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#a3b18a] border border-[#382219] px-2 py-1 self-start">
+                ▶ FREE EXPLORE
+              </span>
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Shared Playground UI (Story + Sandbox both render this) ───────────────
   return (
     <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
       {/* ── Header & Module Tabs ─────────────────────────────────────── */}
@@ -202,6 +306,19 @@ export default function NeuralNetPlayground() {
             <h1 className="text-2xl md:text-3xl font-pixel text-[#dda15e] tracking-wider uppercase">
               Neural Net Visualizer
             </h1>
+            {/* Mode badge */}
+            {appMode === "story" ? (
+              <span className="bg-[#dda15e] text-[#1e140e] font-pixel text-[10px] px-2 py-1 border border-[#7a5225]">
+                STORY MODE
+              </span>
+            ) : (
+              <button
+                onClick={() => setAppMode("select")}
+                className="text-[#a3b18a] hover:text-[#dda15e] font-pixel text-[10px] border border-[#382219] px-2 py-1 transition-colors"
+              >
+                SANDBOX ↺
+              </button>
+            )}
           </div>
           <p className="text-[#a3b18a] text-lg mt-1 font-vt323">
             Backprop • Hidden Layers • Non-Linear Decision Boundaries • TensorFlow.js
@@ -227,7 +344,7 @@ export default function NeuralNetPlayground() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
         {/* Left: Canvas + Node Diagram */}
-        <div className="lg:col-span-7 flex flex-col items-center lg:items-start">
+        <div id="story-nn-canvas" className="lg:col-span-7 flex flex-col items-center lg:items-start">
           <NeuralNetCanvas
             points={points}
             predictionGrid={predGrid}
@@ -249,92 +366,96 @@ export default function NeuralNetPlayground() {
           </div>
 
           {/* Architecture Controls */}
-          <RetroPanel title="Network Architecture" borderColor="border-[#382219]">
-            <div className="flex flex-col gap-4">
-              {/* Hidden nodes */}
-              <div>
-                <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">
-                  Nodes per Hidden Layer:
-                </span>
-                <div className="grid grid-cols-4 gap-2">
-                  {[2, 4, 8, 16].map((n) => (
-                    <button key={n}
-                      onClick={() => handleArchChange({ hiddenSize: n })}
-                      className={`font-pixel text-[10px] uppercase py-2 border-2 transition-all ${
-                        architecture.hiddenSize === n
-                          ? "bg-[#dda15e] text-[#1e140e] border-[#7a5225] shadow-[2px_2px_0px_0px_#0f0a07]"
-                          : "bg-[#1e140e] text-[#a3b18a] border-[#382219] hover:bg-[#281b12]"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
+          <div id="story-nn-arch-panel">
+            <RetroPanel title="Network Architecture" borderColor="border-[#382219]">
+              <div className="flex flex-col gap-4">
+                {/* Hidden nodes */}
+                <div id="story-nn-nodes-panel">
+                  <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">
+                    Nodes per Hidden Layer:
+                  </span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[2, 4, 8, 16].map((n) => (
+                      <button key={n}
+                        onClick={() => handleArchChange({ hiddenSize: n })}
+                        className={`font-pixel text-[10px] uppercase py-2 border-2 transition-all ${
+                          architecture.hiddenSize === n
+                            ? "bg-[#dda15e] text-[#1e140e] border-[#7a5225] shadow-[2px_2px_0px_0px_#0f0a07]"
+                            : "bg-[#1e140e] text-[#a3b18a] border-[#382219] hover:bg-[#281b12]"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Num hidden layers */}
+                <div>
+                  <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">
+                    Hidden Layers:
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([1, 2] as const).map((n) => (
+                      <button key={n}
+                        onClick={() => handleArchChange({ numHiddenLayers: n })}
+                        className={`font-pixel text-[10px] uppercase py-2 border-2 transition-all ${
+                          architecture.numHiddenLayers === n
+                            ? "bg-[#dda15e] text-[#1e140e] border-[#7a5225] shadow-[2px_2px_0px_0px_#0f0a07]"
+                            : "bg-[#1e140e] text-[#a3b18a] border-[#382219] hover:bg-[#281b12]"
+                        }`}
+                      >
+                        {n} Layer{n > 1 ? "s" : ""}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Learning rate */}
+                <RetroSlider
+                  label="Learning Rate (η)"
+                  min={0.01}
+                  max={1.0}
+                  step={0.01}
+                  value={learningRate}
+                  onChange={handleLRChange}
+                  displayValue={learningRate.toFixed(2)}
+                />
+
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <RetroButton variant="primary" onClick={doTrainStep} disabled={!tfReady || points.length === 0}>
+                    Train Step
+                  </RetroButton>
+                  <RetroButton
+                    variant={isTraining ? "danger" : "accent"}
+                    onClick={() => setIsTraining((p) => !p)}
+                    disabled={!tfReady || points.length === 0}
+                  >
+                    {isTraining ? "Stop Auto" : "Train Auto"}
+                  </RetroButton>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <RetroButton variant="secondary" onClick={buildNewModel} disabled={!tfReady}>
+                    Reset Model
+                  </RetroButton>
+                  <RetroButton variant="secondary" onClick={handleClear}>
+                    Clear Canvas
+                  </RetroButton>
+                </div>
+
+                <div className="pt-3 border-t-2 border-[#382219]">
+                  <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">Presets</span>
+                  <div id="story-nn-xor-btn">
+                    <RetroButton variant="secondary" className="w-full" onClick={handleLoadPreset}>
+                      Load XOR Pattern
+                    </RetroButton>
+                  </div>
                 </div>
               </div>
-
-              {/* Num hidden layers */}
-              <div>
-                <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">
-                  Hidden Layers:
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {([1, 2] as const).map((n) => (
-                    <button key={n}
-                      onClick={() => handleArchChange({ numHiddenLayers: n })}
-                      className={`font-pixel text-[10px] uppercase py-2 border-2 transition-all ${
-                        architecture.numHiddenLayers === n
-                          ? "bg-[#dda15e] text-[#1e140e] border-[#7a5225] shadow-[2px_2px_0px_0px_#0f0a07]"
-                          : "bg-[#1e140e] text-[#a3b18a] border-[#382219] hover:bg-[#281b12]"
-                      }`}
-                    >
-                      {n} Layer{n > 1 ? "s" : ""}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Learning rate */}
-              <RetroSlider
-                label="Learning Rate (η)"
-                min={0.01}
-                max={1.0}
-                step={0.01}
-                value={learningRate}
-                onChange={handleLRChange}
-                displayValue={learningRate.toFixed(2)}
-              />
-
-              {/* Action buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <RetroButton variant="primary" onClick={doTrainStep} disabled={!tfReady || points.length === 0}>
-                  Train Step
-                </RetroButton>
-                <RetroButton
-                  variant={isTraining ? "danger" : "accent"}
-                  onClick={() => setIsTraining((p) => !p)}
-                  disabled={!tfReady || points.length === 0}
-                >
-                  {isTraining ? "Stop Auto" : "Train Auto"}
-                </RetroButton>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <RetroButton variant="secondary" onClick={buildNewModel} disabled={!tfReady}>
-                  Reset Model
-                </RetroButton>
-                <RetroButton variant="secondary" onClick={handleClear}>
-                  Clear Canvas
-                </RetroButton>
-              </div>
-
-              <div className="pt-3 border-t-2 border-[#382219]">
-                <span className="font-pixel text-[10px] text-[#a3b18a] block mb-2 uppercase">Presets</span>
-                <RetroButton variant="secondary" className="w-full" onClick={handleLoadPreset}>
-                  Load XOR Pattern
-                </RetroButton>
-              </div>
-            </div>
-          </RetroPanel>
+            </RetroPanel>
+          </div>
 
           {/* Loss Chart */}
           <RetroPanel title="Loss Convergence Chart" borderColor="border-[#382219]">
@@ -387,6 +508,22 @@ export default function NeuralNetPlayground() {
           </div>
         </div>
       </div>
+
+      {/* ── Story Mode Dialogue Overlay ───────────────────────────────────── */}
+      {appMode === "story" && story.currentStep && (
+        <NPCDialogueBox
+          step={story.currentStep}
+          script={neuralNetWalkthrough}
+          stepIndex={story.state.currentStepIndex}
+          totalSteps={neuralNetWalkthrough.steps.length}
+          actionCount={story.state.actionCount}
+          onNext={story.advance}
+          onSkip={() => {
+            story.skip();
+            setAppMode("sandbox");
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -12,7 +12,12 @@ export type StoryAction =
   | "click-next"
   | "add-point"
   | "train-step"
-  | "train-auto";
+  | "train-auto"
+  // Gradient Descent module
+  | "gd-step"
+  // Neural Net module
+  | "nn-load-preset"
+  | "nn-train";
 
 /**
  * A single step in a walkthrough script.
