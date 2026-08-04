@@ -151,6 +151,10 @@ export default function PerceptronPlayground() {
       <main className="min-h-screen bg-[#1e140e] text-[#fefae0] flex flex-col items-center justify-center p-8 font-vt323">
         {/* Module nav still accessible */}
         <nav className="fixed top-4 right-4 flex items-center gap-2 z-10">
+          <Link href="/"
+            className="px-3 py-1.5 bg-[#1e140e] hover:bg-[#281b12] text-[#5c3d2e] hover:text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#2e1e14] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
+            ← Dashboard
+          </Link>
           <Link href="/playground/perceptron"
             className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
             01. Perceptron
@@ -275,6 +279,10 @@ export default function PerceptronPlayground() {
         </div>
 
         <nav className="flex items-center gap-2">
+          <Link href="/"
+            className="px-3 py-1.5 bg-[#1e140e] hover:bg-[#281b12] text-[#5c3d2e] hover:text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#2e1e14] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
+            ← Dashboard
+          </Link>
           <Link href="/playground/perceptron"
             className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
             01. Perceptron

@@ -242,9 +242,6 @@ function RadarSweep() {
       // Sweep gradient
       angleRef.current += 0.03;
       const a = angleRef.current;
-      const grad = ctx.createConicalGradient
-        ? null // fallback below
-        : null;
 
       // Draw sweep as a filled arc sector
       ctx.save();
@@ -575,15 +572,12 @@ export default function HomePage() {
                     </div>
                     {/* Pixel-art badge sprite — one per module */}
                     <div
-                      className="flex flex-col items-center gap-1 mt-1 group-hover:scale-110 transition-transform duration-200"
+                      className="p-1.5 border-2 border-[#1e4023] bg-[#0d1e10] flex items-center justify-center group-hover:scale-110 group-hover:border-[#386641] transition-all duration-200 shadow-[2px_2px_0px_0px_#050d07]"
                       style={{ imageRendering: "pixelated" }}
                     >
-                      {m.id === "perceptron" && <PerceptronBadge scale={2} />}
-                      {m.id === "gradient-descent" && <GradientBadge scale={2} />}
-                      {m.id === "neural-net" && <NeuralNetBadge scale={2} />}
-                      <span className="text-xl select-none" role="img" aria-hidden="true">
-                        {m.icon}
-                      </span>
+                      {m.id === "perceptron" && <PerceptronBadge scale={3} />}
+                      {m.id === "gradient-descent" && <GradientBadge scale={3} />}
+                      {m.id === "neural-net" && <NeuralNetBadge scale={3} />}
                     </div>
                   </div>
 
