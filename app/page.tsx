@@ -8,6 +8,7 @@ import {
   GradientBadge,
   NeuralNetBadge,
 } from "@/components/sprites/ModuleBadges";
+import { UserAuthWidget } from "@/components/auth/UserAuthWidget";
 
 // ── Typewriter hook (inline, lightweight) ────────────────────────────────────
 function useTypewriter(text: string, speed = 38, startDelay = 600) {
@@ -411,7 +412,7 @@ export default function HomePage() {
                 v1.0.0
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {MODULES.map((m) => (
                 <Link
                   key={m.id}
@@ -422,6 +423,7 @@ export default function HomePage() {
                   {m.num}. {m.title}
                 </Link>
               ))}
+              <UserAuthWidget />
             </div>
           </nav>
 

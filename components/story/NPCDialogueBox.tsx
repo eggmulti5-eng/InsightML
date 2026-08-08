@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTypewriter } from "@/lib/story/useTypewriter";
 import { StoryStep, WalkthroughScript } from "@/lib/story/types";
 import { ByteSprite } from "@/components/sprites/ByteSprite";
+import { GlossaryText } from "@/components/story/GlossaryText";
 
 interface NPCDialogueBoxProps {
   step: StoryStep;
@@ -158,7 +159,7 @@ export const NPCDialogueBox: React.FC<NPCDialogueBoxProps> = ({
                 className="flex-1 p-4 text-[#fefae0] leading-relaxed overflow-y-auto whitespace-pre-wrap"
                 style={{ fontSize: "22px", minHeight: "100px", maxHeight: "180px" }}
               >
-                {displayedText}
+                <GlossaryText text={displayedText} />
                 {/* Blinking cursor while typing */}
                 {!isDone && (
                   <span className="inline-block w-3 h-5 bg-[#dda15e] ml-0.5 align-middle animate-pulse" />

@@ -7,6 +7,7 @@ import { PerceptronCanvas } from "@/components/canvas/PerceptronCanvas";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
+import { MathFormulaPanel } from "@/components/ui/MathFormulaPanel";
 import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
 import { ChallengeCard } from "@/components/challenge/ChallengeCard";
 import { ChallengeResultModal } from "@/components/challenge/ChallengeResultModal";
@@ -14,6 +15,7 @@ import { useStoryMode } from "@/lib/story/useStoryMode";
 import { useChallengeMode } from "@/lib/challenge/useChallengeMode";
 import { perceptronWalkthrough } from "@/lib/story/walkthroughs/perceptron";
 import { perceptronChallenge } from "@/lib/challenge/challenges";
+import { UserAuthWidget } from "@/components/auth/UserAuthWidget";
 import {
   DataPoint,
   PerceptronWeights,
@@ -22,7 +24,7 @@ import {
   calculateAccuracy,
 } from "@/lib/ml/perceptron";
 
-type AppMode = "select" | "story" | "sandbox" | "challenge";
+type AppMode = "select" | "story" | "sandbox" | "challenge" | "applied";
 
 export default function PerceptronPlayground() {
   const router = useRouter();
@@ -118,6 +120,11 @@ export default function PerceptronPlayground() {
     setIsTraining(false);
   };
 
+  const enterAppliedMode = () => {
+    setIsTraining(false);
+    setAppMode("applied");
+  };
+
   // When story finishes (isActive becomes false after last step) go to sandbox
   useEffect(() => {
     if (appMode === "story" && !story.state.isActive) {
@@ -167,6 +174,7 @@ export default function PerceptronPlayground() {
             className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
             03. Neural Net
           </Link>
+          <UserAuthWidget />
         </nav>
 
         <div className="max-w-3xl w-full text-center flex flex-col items-center gap-8">
@@ -181,8 +189,8 @@ export default function PerceptronPlayground() {
             <p className="text-[#a3b18a] text-xl">Choose your experience:</p>
           </div>
 
-          {/* Mode cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
+          {/* Mode cards — 2×2 grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
             {/* Story Mode card */}
             <button
               onClick={enterStoryMode}
@@ -232,6 +240,147 @@ export default function PerceptronPlayground() {
               <span className="font-pixel text-[10px] text-[#a3b18a] border border-[#382219] px-2 py-1 self-start">
                 ▶ FREE EXPLORE
               </span>
+            </button>
+
+            {/* Applied Project card */}
+            <button
+              onClick={enterAppliedMode}
+              className="group bg-[#281b12] border-4 border-[#5a6e3a] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#252e15] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">🚀</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#a3b18a] uppercase mb-2">Applied Project</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  BYTE explains how to build a real spam classifier using what you&apos;ve learned.
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#5a6e3a] border border-[#5a6e3a] px-2 py-1 self-start">
+                ▶ READ WITH BYTE
+              </span>
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Applied Project: Spam Classifier Narrative ─────────────────────────
+  if (appMode === "applied") {
+    const byteLines = [
+      {
+        heading: "The Goal: Detect Spam Emails",
+        text: "Imagine your company receives 10,000 emails per day. Maybe 30% are spam — ads, phishing attempts, fake invoices. You need a fast filter. A perceptron is a perfect first weapon.",
+      },
+      {
+        heading: "Step 1 — Choose Your Features",
+        text: "Every email becomes a vector of numbers. For example: x₁ = fraction of words that are ALL CAPS, x₂ = number of hyperlinks, x₃ = presence of words like 'FREE' or 'WINNER' (0 or 1), x₄ = email length in characters. These are your inputs — the axes of your feature space.",
+      },
+      {
+        heading: "Step 2 — Label Your Training Data",
+        text: "Gather ~5,000 emails you've manually labeled: 'spam' (label = +1) and 'ham' (label = −1). This labeled dataset is your training set. The perceptron will learn where to draw the boundary between them in that 4-dimensional feature space.",
+      },
+      {
+        heading: "Step 3 — Train the Perceptron",
+        text: "Run the Perceptron Learning Rule: for each misclassified email, update w ← w + η·label·x. After enough epochs the weights w1, w2, w3, w4 and bias b will settle. The decision boundary is: w1·x1 + w2·x2 + w3·x3 + w4·x4 + b = 0. Emails above this threshold → spam. Below → ham.",
+      },
+      {
+        heading: "Step 4 — The Catch (Linear Separability)",
+        text: "A perceptron only converges if the data is linearly separable — i.e., a single flat hyperplane can cleanly separate spam from ham. Real email data rarely is. That's why production spam filters use logistic regression, SVMs, or neural networks. But a perceptron teaches you the exact conceptual foundation they all build on.",
+      },
+      {
+        heading: "Step 5 — Evaluation & Deployment",
+        text: "Split your dataset: 80% train, 20% test. Measure precision (fraction of spam calls that were correct) and recall (fraction of actual spam you caught). A false negative (missed spam) is annoying. A false positive (blocking a real email) can be catastrophic. Tune your bias b to shift the tradeoff. Deploy behind an API — every incoming email gets feature-extracted, then your dot product gives an instant spam/ham verdict.",
+      },
+      {
+        heading: "What You've Actually Built",
+        text: "Congratulations — you've just described the architecture of SpamAssassin, Gmail's early filter, and every rule-based classifier from the 2000s. Modern spam filters use transformer models and learn on billions of messages, but they still optimize the same fundamental loss: correctly separating two classes by adjusting weights. You now understand the origin story.",
+      },
+    ];
+
+    return (
+      <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323">
+        {/* Header */}
+        <header className="max-w-4xl mx-auto mb-8 bg-[#281b12] border-4 border-[#5a6e3a] p-4 shadow-[6px_6px_0px_0px_#0f0a07] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#1b3521]">
+                Module 01
+              </span>
+              <h1 className="text-2xl md:text-3xl font-pixel text-[#dda15e] tracking-wider uppercase">
+                Applied Project
+              </h1>
+              <span className="bg-[#5a6e3a] text-[#fefae0] font-pixel text-[10px] px-2 py-1 border border-[#3a5220]">
+                NARRATIVE
+              </span>
+            </div>
+            <p className="text-[#a3b18a] text-lg mt-1 font-vt323">
+              Building a Spam Classifier with the Perceptron
+            </p>
+          </div>
+          <button
+            onClick={() => setAppMode("select")}
+            className="font-pixel text-[10px] text-[#a3b18a] hover:text-[#dda15e] border-2 border-[#382219] hover:border-[#dda15e] px-4 py-2 transition-colors"
+          >
+            ← Back to Menu
+          </button>
+        </header>
+
+        {/* BYTE Dialogue Feed */}
+        <div className="max-w-4xl mx-auto flex flex-col gap-6">
+          {/* Intro BYTE bubble */}
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-16 h-16 bg-[#1e140e] border-4 border-[#5a6e3a] flex items-center justify-center text-3xl shadow-[4px_4px_0px_0px_#0f0a07]">
+              🤖
+            </div>
+            <div className="bg-[#281b12] border-4 border-[#5a6e3a] p-4 shadow-[4px_4px_0px_0px_#0f0a07] flex-1">
+              <p className="font-pixel text-[10px] text-[#5a6e3a] uppercase mb-2">BYTE — Applied Project</p>
+              <p className="text-[#fefae0] text-xl leading-relaxed">
+                Excellent work making it this far, human. Now let me show you what a real perceptron looks like in the wild.
+                We&apos;re going to design a <span className="text-[#dda15e]">spam email classifier</span> — step by step,
+                in plain English. No checkboxes, no buttons. Just the architecture in your head.
+              </p>
+            </div>
+          </div>
+
+          {/* Steps */}
+          {byteLines.map((item, i) => (
+            <div key={i} className="flex items-start gap-4">
+              {/* Step number marker */}
+              <div className="flex-shrink-0 w-16 h-16 bg-[#1e140e] border-4 border-[#382219] flex flex-col items-center justify-center shadow-[4px_4px_0px_0px_#0f0a07]">
+                <span className="font-pixel text-[8px] text-[#5c3d2e] uppercase">Step</span>
+                <span className="font-pixel text-[16px] text-[#dda15e]">{String(i + 1).padStart(2, "0")}</span>
+              </div>
+              <div className="bg-[#1e140e] border-4 border-[#382219] p-4 shadow-[4px_4px_0px_0px_#0f0a07] flex-1">
+                <p className="font-pixel text-[10px] text-[#a3b18a] uppercase mb-2 tracking-wider">{item.heading}</p>
+                <p className="text-[#fefae0] text-xl leading-relaxed">{item.text}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Closing BYTE bubble */}
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-16 h-16 bg-[#1e140e] border-4 border-[#5a6e3a] flex items-center justify-center text-3xl shadow-[4px_4px_0px_0px_#0f0a07]">
+              🤖
+            </div>
+            <div className="bg-[#281b12] border-4 border-[#5a6e3a] p-4 shadow-[4px_4px_0px_0px_#0f0a07] flex-1">
+              <p className="font-pixel text-[10px] text-[#5a6e3a] uppercase mb-2">BYTE — Next Steps</p>
+              <p className="text-[#fefae0] text-xl leading-relaxed">
+                That&apos;s the complete perceptron pipeline. For your actual implementation I&apos;d recommend:
+                Python + scikit-learn&apos;s <code className="text-[#dda15e]">Perceptron</code> class,
+                <code className="text-[#dda15e]"> TfidfVectorizer</code> for feature extraction,
+                and the SpamAssassin public dataset. Start there, then graduate to logistic regression once you hit the
+                linearity ceiling. See you in Module 02.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer spacer + back button */}
+          <div className="flex justify-center pt-4 pb-8">
+            <button
+              onClick={() => setAppMode("select")}
+              className="font-pixel text-[12px] text-[#a3b18a] hover:text-[#dda15e] border-4 border-[#382219] hover:border-[#dda15e] px-8 py-3 shadow-[4px_4px_0px_0px_#0f0a07] transition-colors"
+            >
+              ← Return to Module Menu
             </button>
           </div>
         </div>
@@ -295,6 +444,7 @@ export default function PerceptronPlayground() {
             className="px-3 py-1.5 bg-[#3e271c] hover:bg-[#5c3d2e] text-[#a3b18a] font-pixel text-[10px] uppercase border-2 border-[#1e140e] shadow-[2px_2px_0px_0px_#0f0a07] transition-colors">
             03. Neural Net
           </Link>
+          <UserAuthWidget />
         </nav>
       </header>
 
@@ -309,6 +459,7 @@ export default function PerceptronPlayground() {
             width={600}
             height={600}
           />
+          <MathFormulaPanel module="perceptron" weights={weights} />
         </div>
 
         {/* Right Column: Controls & Live Readout */}

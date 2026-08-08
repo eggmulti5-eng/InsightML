@@ -13,6 +13,7 @@ import { LossChart } from "@/components/charts/LossChart";
 import { RetroButton } from "@/components/ui/RetroButton";
 import { RetroSlider } from "@/components/ui/RetroSlider";
 import { RetroPanel } from "@/components/ui/RetroPanel";
+import { MathFormulaPanel } from "@/components/ui/MathFormulaPanel";
 import { NPCDialogueBox } from "@/components/story/NPCDialogueBox";
 import { ChallengeCard } from "@/components/challenge/ChallengeCard";
 import { ChallengeResultModal } from "@/components/challenge/ChallengeResultModal";
@@ -20,6 +21,7 @@ import { useStoryMode } from "@/lib/story/useStoryMode";
 import { useChallengeMode } from "@/lib/challenge/useChallengeMode";
 import { neuralNetWalkthrough } from "@/lib/story/walkthroughs/neuralNet";
 import { neuralNetChallenge } from "@/lib/challenge/challenges";
+import { UserAuthWidget } from "@/components/auth/UserAuthWidget";
 import { NNDataPoint, LayerWeightInfo, NetworkArchitecture } from "@/modules/neural-net/types";
 import type { TFType, TFModel } from "@/lib/ml/neural-net";
 
@@ -106,7 +108,7 @@ const OVERFIT_TEST: NNDataPoint[] = [
   { id: "e10", x:  0.10, y:  0.10, label: 0 }, // centre
 ];
 
-type AppMode = "select" | "story" | "sandbox" | "challenge" | "overfitting";
+type AppMode = "select" | "story" | "sandbox" | "challenge" | "overfitting" | "applied";
 
 export default function NeuralNetPlayground() {
   const router = useRouter();
@@ -340,6 +342,11 @@ export default function NeuralNetPlayground() {
     setTimeout(() => buildOvModel(ovNodes), 100);
   };
 
+  const enterAppliedMode = () => {
+    setIsTraining(false);
+    setAppMode("applied");
+  };
+
   // ── Mode selection handlers ───────────────────────────────────────────────
   const enterStoryMode = () => {
     setAppMode("story");
@@ -440,6 +447,7 @@ export default function NeuralNetPlayground() {
             className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
             03. Neural Net
           </Link>
+          <UserAuthWidget />
         </nav>
 
         <div className="max-w-3xl w-full text-center flex flex-col items-center gap-8">
@@ -453,7 +461,8 @@ export default function NeuralNetPlayground() {
             <p className="text-[#a3b18a] text-xl">Choose your experience:</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
+          {/* Top row: 2 cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
             {/* Story Mode card */}
             <button
               onClick={enterStoryMode}
@@ -487,7 +496,10 @@ export default function NeuralNetPlayground() {
                 ▶ START CHALLENGE
               </span>
             </button>
+          </div>
 
+          {/* Bottom row: 3 cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
             {/* Sandbox Mode card */}
             <button
               onClick={enterSandboxMode}
@@ -514,11 +526,28 @@ export default function NeuralNetPlayground() {
               <div>
                 <h2 className="font-pixel text-[12px] text-[#bc4749] uppercase mb-2">Overfitting Demo</h2>
                 <p className="text-[#a3b18a] text-lg leading-snug">
-                  Watch a model memorise noise. See training vs test accuracy diverge as complexity grows.
+                  Watch a model memorise noise. See train vs test accuracy diverge.
                 </p>
               </div>
               <span className="font-pixel text-[10px] text-[#bc4749] border border-[#6b2123] px-2 py-1 self-start">
                 ▶ EXPLORE OVERFITTING
+              </span>
+            </button>
+
+            {/* Applied Project card */}
+            <button
+              onClick={enterAppliedMode}
+              className="group bg-[#281b12] border-4 border-[#5a6e3a] shadow-[6px_6px_0px_0px_#0f0a07] p-6 text-left flex flex-col gap-3 hover:bg-[#252e15] hover:-translate-y-1 transition-all active:translate-y-0 active:shadow-[2px_2px_0px_0px_#0f0a07]"
+            >
+              <div className="text-4xl">✏️</div>
+              <div>
+                <h2 className="font-pixel text-[12px] text-[#a3b18a] uppercase mb-2">Applied Project</h2>
+                <p className="text-[#a3b18a] text-lg leading-snug">
+                  BYTE explains how to build a real handwritten digit recognizer.
+                </p>
+              </div>
+              <span className="font-pixel text-[10px] text-[#5a6e3a] border border-[#5a6e3a] px-2 py-1 self-start">
+                ▶ READ WITH BYTE
               </span>
             </button>
           </div>
@@ -577,6 +606,7 @@ export default function NeuralNetPlayground() {
               className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
               03. Neural Net
             </Link>
+            <UserAuthWidget />
           </nav>
         </header>
 
@@ -650,6 +680,7 @@ export default function NeuralNetPlayground() {
                 <span className="text-[#a3b18a]">Test pts (◯)</span>
               </div>
             </div>
+            <MathFormulaPanel module="neural-net" hiddenSize={ovNodes} numHiddenLayers={2} />
           </div>
 
           {/* Right: Controls + Dual Accuracy + BYTE alert */}
@@ -812,6 +843,136 @@ export default function NeuralNetPlayground() {
     );
   }
 
+  // ── Applied Project: Digit Recognizer Narrative ──────────────────────────
+  if (appMode === "applied") {
+    const byteLines = [
+      {
+        heading: "The Goal: Read Handwritten Digits",
+        text: "Google Photos can read handwritten text from photos. Post offices route mail by reading zip codes scrawled by hand. Phone apps convert your handwriting to text instantly. At the heart of all of them is a model trained on handwritten digit images — and your neural net is now capable of doing the same thing.",
+      },
+      {
+        heading: "Step 1 — The MNIST Dataset",
+        text: "MNIST is 70,000 grayscale images of handwritten digits (0–9), each 28×28 pixels. That's 784 pixel values per image, each between 0 (black) and 255 (white). The dataset has been used in ML research since 1998 and is the 'Hello World' of image classification.",
+      },
+      {
+        heading: "Step 2 — Turning Pixels into Features",
+        text: "Flatten each 28×28 image into a vector of 784 numbers. Normalize them to [0, 1] by dividing by 255. Now each image is a point in 784-dimensional space. Your network's input layer has 784 nodes — one per pixel. This is exactly what you set up in the sandbox, just scaled up.",
+      },
+      {
+        heading: "Step 3 — The Hidden Layers Learn Hierarchical Features",
+        text: "The first hidden layer learns to detect edges — horizontal, vertical, diagonal strokes. The second hidden layer combines those edges into shapes — curves, loops, corners. By the time signals reach the output layer, the network has assembled a full conceptual understanding: 'this collection of curves and angles looks like a 3'. This is representation learning.",
+      },
+      {
+        heading: "Step 4 — The Output Layer: 10-Way Classification",
+        text: "Unlike your XOR sandbox (which had 1 output node for binary classification), a digit recognizer needs 10 output nodes — one per digit class (0–9). We use a softmax activation on the output: it converts raw scores into probabilities that sum to 1. The predicted digit is whichever output node has the highest probability.",
+      },
+      {
+        heading: "Step 5 — Training with Backprop",
+        text: "For each image, the network makes a prediction. We compute the loss using cross-entropy: L = −log(p_correct). Backpropagation computes the gradient of L with respect to every weight in the network (via the chain rule), and gradient descent updates all weights simultaneously. After 5–10 epochs on MNIST, a simple MLP reaches ~98% accuracy.",
+      },
+      {
+        heading: "Step 6 — Why Convolutional Layers Help",
+        text: "A flat MLP treats every pixel independently — it doesn't know that nearby pixels are related. A Convolutional Neural Network (CNN) uses small sliding filters that detect local patterns regardless of position. CNNs reach 99.7%+ on MNIST with far fewer parameters. They're also what powers face recognition, self-driving car perception, and medical imaging AI.",
+      },
+      {
+        heading: "What You've Actually Built",
+        text: "The architecture you used in the sandbox — input layer → hidden layers with ReLU → sigmoid output — is a Multi-Layer Perceptron. Scale it to 784 inputs, 128 hidden nodes, and 10 softmax outputs, train on MNIST for 10 epochs, and you've replicated the model that launched the modern deep learning era. The rest is engineering.",
+      },
+    ];
+
+    return (
+      <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323">
+        {/* Header */}
+        <header className="max-w-4xl mx-auto mb-8 bg-[#281b12] border-4 border-[#5a6e3a] p-4 shadow-[6px_6px_0px_0px_#0f0a07] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="bg-[#bc4749] text-[#fefae0] font-pixel text-[10px] uppercase px-2 py-1 border border-[#6b2123]">
+                Module 03
+              </span>
+              <h1 className="text-2xl md:text-3xl font-pixel text-[#dda15e] tracking-wider uppercase">
+                Applied Project
+              </h1>
+              <span className="bg-[#5a6e3a] text-[#fefae0] font-pixel text-[10px] px-2 py-1 border border-[#3a5220]">
+                NARRATIVE
+              </span>
+            </div>
+            <p className="text-[#a3b18a] text-lg mt-1 font-vt323">
+              Building a Handwritten Digit Recognizer with Neural Networks
+            </p>
+          </div>
+          <button
+            onClick={() => setAppMode("select")}
+            className="font-pixel text-[10px] text-[#a3b18a] hover:text-[#dda15e] border-2 border-[#382219] hover:border-[#dda15e] px-4 py-2 transition-colors"
+          >
+            ← Back to Menu
+          </button>
+        </header>
+
+        {/* BYTE Dialogue Feed */}
+        <div className="max-w-4xl mx-auto flex flex-col gap-6">
+          {/* Intro BYTE bubble */}
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-16 h-16 bg-[#1e140e] border-4 border-[#5a6e3a] flex items-center justify-center text-3xl shadow-[4px_4px_0px_0px_#0f0a07]">
+              🤖
+            </div>
+            <div className="bg-[#281b12] border-4 border-[#5a6e3a] p-4 shadow-[4px_4px_0px_0px_#0f0a07] flex-1">
+              <p className="font-pixel text-[10px] text-[#5a6e3a] uppercase mb-2">BYTE — Applied Project</p>
+              <p className="text-[#fefae0] text-xl leading-relaxed">
+                You&apos;ve mastered XOR. You&apos;ve felt what hidden layers can do. Now I&apos;m going to show you the exact
+                same architecture deployed at scale — a{" "}
+                <span className="text-[#dda15e]">handwritten digit recognizer</span>{" "}
+                trained on 70,000 images. This is the model that started the deep learning revolution.
+              </p>
+            </div>
+          </div>
+
+          {/* Steps */}
+          {byteLines.map((item, i) => (
+            <div key={i} className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-16 h-16 bg-[#1e140e] border-4 border-[#382219] flex flex-col items-center justify-center shadow-[4px_4px_0px_0px_#0f0a07]">
+                <span className="font-pixel text-[8px] text-[#5c3d2e] uppercase">Step</span>
+                <span className="font-pixel text-[16px] text-[#dda15e]">{String(i + 1).padStart(2, "0")}</span>
+              </div>
+              <div className="bg-[#1e140e] border-4 border-[#382219] p-4 shadow-[4px_4px_0px_0px_#0f0a07] flex-1">
+                <p className="font-pixel text-[10px] text-[#a3b18a] uppercase mb-2 tracking-wider">{item.heading}</p>
+                <p className="text-[#fefae0] text-xl leading-relaxed">{item.text}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Closing BYTE bubble */}
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-16 h-16 bg-[#1e140e] border-4 border-[#5a6e3a] flex items-center justify-center text-3xl shadow-[4px_4px_0px_0px_#0f0a07]">
+              🤖
+            </div>
+            <div className="bg-[#281b12] border-4 border-[#5a6e3a] p-4 shadow-[4px_4px_0px_0px_#0f0a07] flex-1">
+              <p className="font-pixel text-[10px] text-[#5a6e3a] uppercase mb-2">BYTE — Next Steps</p>
+              <p className="text-[#fefae0] text-xl leading-relaxed">
+                To build this yourself: install{" "}
+                <code className="text-[#dda15e]">PyTorch</code>, load{" "}
+                <code className="text-[#dda15e]">torchvision.datasets.MNIST</code>, define a 3-layer MLP with{" "}
+                <code className="text-[#dda15e]">nn.Linear + ReLU</code>, and train with{" "}
+                <code className="text-[#dda15e]">CrossEntropyLoss + Adam</code>. Ten epochs later,
+                you&apos;ll have a model reading handwritten numbers at ~98% accuracy.
+                Then try swapping the MLP for a <code className="text-[#dda15e]">Conv2d</code> layer and watch it jump to 99.7%.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer spacer + back button */}
+          <div className="flex justify-center pt-4 pb-8">
+            <button
+              onClick={() => setAppMode("select")}
+              className="font-pixel text-[12px] text-[#a3b18a] hover:text-[#dda15e] border-4 border-[#382219] hover:border-[#dda15e] px-8 py-3 shadow-[4px_4px_0px_0px_#0f0a07] transition-colors"
+            >
+              ← Return to Module Menu
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   // ── Shared Playground UI ──────────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#1e140e] text-[#fefae0] p-4 md:p-8 font-vt323 selection:bg-[#dda15e] selection:text-[#1e140e]">
@@ -867,6 +1028,7 @@ export default function NeuralNetPlayground() {
             className="px-3 py-1.5 bg-[#386641] text-[#fefae0] font-pixel text-[10px] uppercase border-2 border-[#1b3521] shadow-[2px_2px_0px_0px_#0f0a07]">
             03. Neural Net
           </Link>
+          <UserAuthWidget />
         </nav>
       </header>
 
@@ -884,6 +1046,7 @@ export default function NeuralNetPlayground() {
             width={560}
             height={560}
           />
+          <MathFormulaPanel module="neural-net" hiddenSize={architecture.hiddenSize} numHiddenLayers={architecture.numHiddenLayers} />
         </div>
 
         {/* Right: Controls + Chart + Readout */}
